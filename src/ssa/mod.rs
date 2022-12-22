@@ -60,6 +60,14 @@ impl SsaVarAlloc {
 	pub fn new_i64(&mut self) -> TypedSsaVar {
 		self.new_typed(ValType::I64)
 	}
+
+	pub fn new_f32(&mut self) -> TypedSsaVar {
+		self.new_typed(ValType::F32)
+	}
+
+	pub fn new_f64(&mut self) -> TypedSsaVar {
+		self.new_typed(ValType::F64)
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -127,12 +135,12 @@ impl TypedSsaVar {
 	}
 
 	pub fn unwrap_i32(self) -> SsaVar {
-		assert_eq!(self.1, ValType::I32);
+		assert!(self.1 == ValType::I32 || self.1 == ValType::F32);
 		SsaVar(self.0)
 	}
 
 	pub fn unwrap_i64(self) -> SsaVar {
-		assert_eq!(self.1, ValType::I64);
+		assert!(self.1 == ValType::I64 || self.1 == ValType::F64);
 		SsaVar(self.0)
 	}
 }
@@ -286,6 +294,9 @@ pub enum SsaInstr {
 	TurtlePaste,
 	PrintInt(TypedSsaVar),
 	PutChar(TypedSsaVar),
+	WasiProcExit(TypedSsaVar),
+
+	Todo(&'static str),
 }
 
 impl SsaInstr {
@@ -344,7 +355,7 @@ impl SsaInstr {
 
 			SsaInstr::Eqz(_, src) => vec![*src],
 
-			SsaInstr::Load64(_, _, addr) | 
+			SsaInstr::Load64(_, _, addr) |
 			SsaInstr::Load32S(_, _, addr) |
 			SsaInstr::Load32U(_, _, addr) |
 			SsaInstr::Load16S(_, _, addr) |
@@ -353,7 +364,7 @@ impl SsaInstr {
 			SsaInstr::Load8U(_, _, addr) => addr.get_var().into_iter().collect(),
 
 			SsaInstr::Store64(_, src, addr) |
-			SsaInstr::Store32(_, src, addr) | 
+			SsaInstr::Store32(_, src, addr) |
 			SsaInstr::Store16(_, src, addr) |
 			SsaInstr::Store8(_, src, addr) => Some(*src).into_iter().chain(addr.get_var()).collect(),
 
@@ -361,7 +372,7 @@ impl SsaInstr {
 			SsaInstr::GlobalGet(_, _) => vec![],
 
 			SsaInstr::LocalSet(_, src) => vec![*src],
-			SsaInstr::LocalGet(_, _) => vec![], 
+			SsaInstr::LocalGet(_, _) => vec![],
 
 			SsaInstr::ParamGet(_, _) => vec![],
 
@@ -419,6 +430,8 @@ impl SsaInstr {
 			SsaInstr::TurtlePaste => Vec::new(),
 			SsaInstr::PrintInt(i) => vec![*i],
 			SsaInstr::PutChar(i) => vec![*i],
+			SsaInstr::WasiProcExit(i) => vec![*i],
+			SsaInstr::Todo(_) => Vec::new(),
 		}
 	}
 
@@ -478,7 +491,7 @@ impl SsaInstr {
 			SsaInstr::GlobalGet(dst, _) => vec![*dst],
 
 			SsaInstr::LocalSet(_, _) => vec![],
-			SsaInstr::LocalGet(dst, _) => vec![*dst], 
+			SsaInstr::LocalGet(dst, _) => vec![*dst],
 
 			SsaInstr::ParamGet(dst, _) => vec![*dst],
 
@@ -508,6 +521,8 @@ impl SsaInstr {
 			SsaInstr::TurtlePaste => Vec::new(),
 			SsaInstr::PrintInt(_) => Vec::new(),
 			SsaInstr::PutChar(_) => Vec::new(),
+			SsaInstr::WasiProcExit(_) => Vec::new(),
+			SsaInstr::Todo(_) => Vec::new(),
 		}
 	}
 
@@ -584,7 +599,9 @@ impl SsaInstr {
 			SsaInstr::TurtleCopy |
 			SsaInstr::TurtlePaste |
 			SsaInstr::PrintInt(_) |
-			SsaInstr::PutChar(_) => true,
+			SsaInstr::PutChar(_) |
+			SsaInstr::WasiProcExit(_) |
+			SsaInstr::Todo(_) => true,
 		}
 
 	}
@@ -602,10 +619,10 @@ impl SsaInstr {
 			SsaInstr::And(_, _, r) |
 			SsaInstr::Xor(_, _, r) |
 			SsaInstr::Or(_, _, r) |
-			SsaInstr::Mul(_, _, r) | 
-			SsaInstr::RemS(_, _, r) | 
-			SsaInstr::RemU(_, _, r) | 
-			SsaInstr::DivS(_, _, r) | 
+			SsaInstr::Mul(_, _, r) |
+			SsaInstr::RemS(_, _, r) |
+			SsaInstr::RemU(_, _, r) |
+			SsaInstr::DivS(_, _, r) |
 			SsaInstr::DivU(_, _, r) => vec![r],
 
 			SsaInstr::GtS(_, lhs, rhs) |
@@ -619,7 +636,7 @@ impl SsaInstr {
 			SsaInstr::Eq(_, lhs, rhs) |
 			SsaInstr::Ne(_, lhs, rhs) => vec![lhs, rhs],
 
-			SsaInstr::Load64(_, _, addr) | 
+			SsaInstr::Load64(_, _, addr) |
 			SsaInstr::Load32S(_, _, addr) |
 			SsaInstr::Load32U(_, _, addr) |
 			SsaInstr::Load16S(_, _, addr) |
@@ -664,7 +681,7 @@ impl SsaInstr {
 			SsaInstr::And(dst, lhs, SsaVarOrConst::Const(c))
 				if dst.ty() == ValType::I32 && is_simple_and_mask(c.into_i32().unwrap()) => vec![(dst, lhs)],
 
-			_ => Vec::new(), 
+			_ => Vec::new(),
 		}
 	}
 }

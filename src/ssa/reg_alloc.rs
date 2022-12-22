@@ -1,6 +1,6 @@
 use std::collections::{HashSet, HashMap};
 
-use crate::{lir::{Register, DoubleRegister}, ssa::liveness::print_live_ranges};
+use crate::{lir::{Register, DoubleRegister}};
 
 use super::{SsaFunction, SsaVar, liveness::{NoopLivenessInfo, LivenessInfo, FullLivenessInfo}, TypedSsaVar, BlockId};
 
@@ -182,7 +182,7 @@ mod register_set {
 
 	#[derive(Debug)]
 	pub struct RegisterSet(Vec<MergedRegister>);
-	
+
 	impl RegisterSet {
 		pub fn new(func: &SsaFunction) -> Self {
 			let all_vars = NoopLivenessInfo::analyze(func).vars;
@@ -303,7 +303,7 @@ fn try_merge_term(sets: &mut RegisterSet, block_id: BlockId, dst: &TypedSsaVar, 
 	}
 }
 
-fn try_merge(sets: &mut RegisterSet, block_id: BlockId, instr_idx: usize, dst: &TypedSsaVar, src: &TypedSsaVar, func: &SsaFunction, interf_graph: &InterfGraph) {
+fn try_merge(sets: &mut RegisterSet, block_id: BlockId, instr_idx: usize, dst: &TypedSsaVar, src: &TypedSsaVar, interf_graph: &InterfGraph) {
 	if sets.get_idx(*dst) == sets.get_idx(*src) {
 		return;
 	}
@@ -325,23 +325,11 @@ fn try_merge(sets: &mut RegisterSet, block_id: BlockId, instr_idx: usize, dst: &
 
 	let overlap = dst_set.live_range.overlap(&src_set.live_range);
 
-
-	//println!("Registers {:?} {:?}", dst, src);
-	//print_live_ranges(&[dst_set.live_range.clone(), src_set.live_range.clone()], func);
-
 	if overlap.is_empty() {
 		let dst_block_live_range = dst_set.live_range.0.get(block_id).unwrap();
 		if !dst_block_live_range.body.iter().any(|r| r.contains(&(instr_idx + 1))) {
 			panic!();
 		}
-
-		/*let v36 = TypedSsaVar(36, wasmparser::ValType::I32);
-		let v72 = TypedSsaVar(72, wasmparser::ValType::I32);
-		let ok1 = dst_set.members.contains(&v72) && src_set.members.contains(&v36);
-		let ok2 = dst_set.members.contains(&v36) && src_set.members.contains(&v72);
-		if ok1 || ok2 {
-			panic!();
-		}*/
 
 		sets.merge(*dst, *src);
 	}
@@ -365,7 +353,7 @@ impl FullRegAlloc {
 					assert!(uses.contains(src));
 					assert!(defs.contains(dst));
 
-					try_merge(&mut sets, block_id, instr_idx, dst, src, func, &interf_graph);
+					try_merge(&mut sets, block_id, instr_idx, dst, src, &interf_graph);
 				}
 			}
 
@@ -424,7 +412,7 @@ impl RegAlloc for FullRegAlloc {
 mod test {
 	use wasmparser::ValType;
 
-	use crate::ssa::{SsaBasicBlock, TypedSsaVar, SsaInstr, SsaTerminator, JumpTarget, BlockId, SsaFunction, liveness::{FullLivenessInfo, LivenessInfo, print_liveness_info}};
+	use crate::ssa::{SsaBasicBlock, TypedSsaVar, SsaInstr, SsaTerminator, JumpTarget, BlockId, SsaFunction};
 
 	use super::{FullRegAlloc, RegAlloc};
 
@@ -540,7 +528,7 @@ mod test {
 
 		println!("{:?}", reg_alloc.map);
 		panic!();
-		
+
 		/*let liveness = FullLivenessInfo::analyze(&func);
 
 		let r0_range = liveness.live_range(r0);

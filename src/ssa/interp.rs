@@ -137,7 +137,7 @@ impl VarContext {
 		} else {
 			None
 		}
-	}	
+	}
 }
 
 trait Var {
@@ -173,9 +173,6 @@ pub struct SsaInterpreter {
 impl SsaInterpreter {
 	pub fn new(program: SsaProgram) -> Self {
 		let constants = program.code.iter().flat_map(super::const_prop::get_func_constants).collect();
-		
-		//let constants = HashMap::new();
-		
 		let code = program.code.into_iter().flat_map(|f| f.iter().map(|(i, b)| (i, (*b).clone())).collect::<Vec<_>>()).collect::<HashMap<_, _>>();
 
 		Self {
@@ -239,7 +236,7 @@ impl SsaInterpreter {
 					assert_eq!(target_block.params.len(), jump.params.len());
 					for (&dst, &src) in target_block.params.iter().zip(jump.params.iter()) {
 						assert_eq!(dst.ty(), src.ty());
-						
+
 						let val = frame.var_context.get_typed(src).unwrap();
 						frame.var_context.insert(dst.into_untyped(), val);
 					}
@@ -371,7 +368,7 @@ impl SsaInterpreter {
 
 				let result = match (l, r) {
 					(TypedValue::I32(l), TypedValue::I32(r)) => {
-						TypedValue::I32(f(l, r))					
+						TypedValue::I32(f(l, r))
 					}
 					(TypedValue::I64(l), TypedValue::I64(r)) => {
 						TypedValue::I64(g(l, r))

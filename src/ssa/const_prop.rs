@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap};
 
 use wasmparser::ValType;
 
@@ -265,63 +265,11 @@ pub fn get_func_constants(func: &SsaFunction) -> LocalBlockMap<StaticState> {
 
 			let preds = pred_info.get_predecessors(*node);
 			for pred in preds {
-				let pred_block = func.get(*pred);
-
-				let this_block = func.get(*node);
-
 				let pred_state = states.get(*pred).unwrap_or(&empty_state);
 
 				for (var, val) in pred_state.iter() {
 					merge_var(&mut entry_state, *var, *val);
 				}
-
-				/*match &pred_block.term {
-					super::SsaTerminator::ScheduleJump(t, _) |
-					super::SsaTerminator::Jump(t) => {
-						for (dst, src) in this_block.params.iter().zip(t.params.iter()) {
-							if let Some(src) = pred_state.get(src).copied() {
-								merge_var(&mut entry_state, *dst, src);
-							}
-						}
-					}
-					super::SsaTerminator::BranchIf { cond: _, true_target, false_target } => {
-						if true_target.label == *node {
-							for (dst, src) in this_block.params.iter().zip(true_target.params.iter()) {
-								if let Some(src) = pred_state.get(src).copied() {
-									merge_var(&mut entry_state, *dst, src);
-								}
-							}
-						}
-						if false_target.label == *node {
-							for (dst, src) in this_block.params.iter().zip(false_target.params.iter()) {
-								if let Some(src) = pred_state.get(src).copied() {
-									merge_var(&mut entry_state, *dst, src);
-								}
-							}
-						}
-					}
-					super::SsaTerminator::BranchTable { cond: _, default, arms } => {
-						if default.label == *node {
-							for (dst, src) in this_block.params.iter().zip(default.params.iter()) {
-								if let Some(src) = pred_state.get(src).copied() {
-									merge_var(&mut entry_state, *dst, src);
-								}
-							}
-						}
-
-						for arm in arms.iter() {
-							if arm.label == *node {
-								for (dst, src) in this_block.params.iter().zip(arm.params.iter()) {
-									if let Some(src) = pred_state.get(src).copied() {
-										merge_var(&mut entry_state, *dst, src);
-									}
-								}
-							}
-						}
-					},
-					super::SsaTerminator::Return(_) |
-					super::SsaTerminator::Unreachable => unreachable!(),
-				}*/
 			}
 
 			let block = func.get(*node);
@@ -341,20 +289,6 @@ pub fn get_func_constants(func: &SsaFunction) -> LocalBlockMap<StaticState> {
 			}
 		}
 	}
-
-	/*let mut sorted = state.iter().map(|(id, st)| (*id, *st)).collect::<Vec<_>>();
-	sorted.sort_by_key(|(bl, _)| bl.0);
-
-	let mut h = hashers::fnv::FNV1aHasher32::default();
-	sorted.hash(&mut h);
-	let hash = h.finish();
-
-	println!("ABC const prop, hash is {:?}", hash);
-
-	println!("THE DATA:");
-	for (id, thing) in sorted.iter() {
-		println!("ABC = {:?} {:?}", id, thing);
-	}*/
 
 	states
 }
@@ -468,7 +402,7 @@ pub fn do_block_const_prop_from(_id: BlockId, block: &SsaBasicBlock, constants: 
 							TypedValue::I32(c) => c as u32 as u64,
 							TypedValue::I64(c) => c as u64,
 						};
-						
+
 						constants.insert(dst, BitMask { set_bits: cst & msk.set_bits, clr_bits: !cst | msk.clr_bits }.into());
 					}
 					(Some(StaticValue::Mask(msk)), None) |
@@ -719,7 +653,7 @@ pub fn do_strength_reduction(block: &mut SsaBasicBlock, constants: &StaticState)
 				}
 			}
 		}
-		
+
 		match *instr {
 			SsaInstr::DivU(dst, lhs, rhs) => {
 				let lhs_val = constants.get(&lhs).copied();

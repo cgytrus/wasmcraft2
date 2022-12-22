@@ -4,7 +4,7 @@ use wasmparser::{MemoryImmediate, ValType};
 
 use crate::{lir::{Register, LirInstr, DoubleRegister, LirBasicBlock, LirProgram, LirFunction, LirTerminator, Condition, Half, LirJumpTarget}, ssa::{TypedSsaVar, SsaVarOrConst, liveness::{FullLivenessInfo, DomTree}, const_prop::{StaticState, self}}, jump_mode, JumpMode, CompileContext, block_id_map::LocalBlockMap};
 
-use super::{SsaProgram, SsaFunction, SsaBasicBlock, BlockId, reg_alloc::*, liveness::{LivenessInfo, SimpleLivenessInfo}, call_graph::CallGraph, Table, const_prop::StaticValue, interp::TypedValue};
+use super::{SsaProgram, SsaFunction, SsaBasicBlock, BlockId, reg_alloc::*, liveness::{LivenessInfo}, call_graph::CallGraph, Table, const_prop::StaticValue, interp::TypedValue};
 
 
 struct LirFuncBuilder {
@@ -58,7 +58,7 @@ pub fn get_compatible_functions<'a>(parent: &'a SsaProgram, table: &'a Table, pa
 		let mut is_compat = true;
 		let func = parent.get_func(*func_idx as u32);
 
-		if func.params.len() != params.len() 
+		if func.params.len() != params.len()
 		|| func.params.iter().zip(params.iter()).any(|(p1, p2)| *p1 != p2.ty()) {
 			is_compat = false;
 		}
@@ -118,8 +118,6 @@ fn lower_block<L>(
 	where L: LivenessInfo
 {
 	let ssa_block_id = block_id;
-
-	let mut b = ssa_block.clone();
 
 	fn do_binop<'a, F, G, L, R>(dst: TypedSsaVar, lhs: L, rhs: R, block: &'a mut Vec<LirInstr>, ra: &mut dyn RegAlloc, f: F, g: G)
 		where
@@ -373,8 +371,6 @@ fn lower_block<L>(
 			_ => todo!()
 		}
 	}
-
-	let mut new_block_id = block_id;
 
 	let mut block = Vec::new();
 
@@ -1016,7 +1012,7 @@ fn lower_block<L>(
 		crate::ssa::SsaTerminator::ScheduleJump(target, delay) => {
 			assert!(target.params.is_empty());
 			assert!(parent_func.get(target.label).params.is_empty());
-			
+
 			builder.push(block_id, block, LirTerminator::ScheduleJump(target.label, *delay));
 		}
 		crate::ssa::SsaTerminator::Jump(target) => {
@@ -1255,42 +1251,6 @@ fn emit_copy(block: &mut Vec<LirInstr>, in_params: &[TypedSsaVar], out_params: &
 			add_instr(LirInstr::Assign(out_param, tmp));
 		}
 	}
-
-	/*
-	for (idx, (in_param, _)) in param_pairs.clone().enumerate() {
-		match in_param.ty() {
-			ValType::I32 => {
-				let tmp = Register::temp_lo(idx as u32);
-				let in_reg = ra.get(in_param.into_untyped());
-				add_instr(LirInstr::Assign(tmp, in_reg));
-			}
-			ValType::I64 => {
-				let tmp = DoubleRegister::temp(idx as u32);
-				let in_reg = ra.get_double(in_param.into_untyped());
-				add_instr(LirInstr::Assign(tmp.lo(), in_reg.lo()));
-				add_instr(LirInstr::Assign(tmp.hi(), in_reg.hi()));
-			}
-			_ => panic!(),
-		}
-	}
-
-	for (idx, (_, out_param)) in param_pairs.enumerate() {
-		match out_param.ty() {
-			ValType::I32 => {
-				let tmp = Register::temp_lo(idx as u32);
-				let out_reg = ra.get(out_param.into_untyped());
-				add_instr(LirInstr::Assign(out_reg, tmp));
-			}
-			ValType::I64 => {
-				let tmp = DoubleRegister::temp(idx as u32);
-				let out_reg = ra.get_double(out_param.into_untyped());
-				add_instr(LirInstr::Assign(out_reg.lo(), tmp.lo()));
-				add_instr(LirInstr::Assign(out_reg.hi(), tmp.hi()));
-			}
-			_ => todo!(),
-		}
-	}
-	*/
 }
 
 const MANUALLY_ZERO_LOCALS: bool = false;

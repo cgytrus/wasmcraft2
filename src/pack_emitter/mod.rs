@@ -80,7 +80,7 @@ fn create_constants_init(constants: &HashSet<i32>, code: &mut Vec<String>) {
 		let v = (1_u32 << i) as i32;
 		code.push(format!("scoreboard players set %%{v} reg {v}"));
 	}
-	
+
 	for v in constants.iter() {
 		code.push(format!("scoreboard players set %const%{v} reg {v}"));
 	}
@@ -178,7 +178,7 @@ fn create_init_func(program: &LirProgram, constants: &HashSet<i32>) -> Function 
 
 fn create_return_to_saved_func(program: &LirProgram) -> Vec<Function> {
 	let reg = Register::temp_lo(0);
-	
+
 	let mut code = Vec::new();
 
 	code.push(format!("scoreboard players set {reg} -1"));
@@ -431,7 +431,7 @@ fn mem_store_16(src: Register, addr: RegisterWithInfo, code: &mut Vec<String>, c
 	if INSERT_MEM_PRINTS {
 		code.push(tellraw_mem_store(16, src, addr.0));
 	}
-	
+
 	if let Some(addr) = addr.get_const() {
 		match addr % 4 {
 			0 => {
@@ -557,7 +557,7 @@ fn mem_store_8 (src: Register, addr: RegisterWithInfo, code: &mut Vec<String>) {
 		let z = known_z(addr.1);
 		let y = known_y(addr.1);
 		let x = known_x(addr.1);
-		
+
 		if let (Some(0), None, None, None) = (o, z, y, x) {
 			code.push(format!("scoreboard players operation %ptr reg = {addr}"));
 			code.push("function intrinsic:setptr".to_string());
@@ -666,7 +666,7 @@ fn mem_load_unaligned_32(dst: Register, addr: i32, offset: i32, code: &mut Vec<S
 	code.push(format!("scoreboard players operation {dst} += {tmp1}"))
 }
 
-fn mem_load_64(dst: DoubleRegister, addr: RegisterWithInfo, code: &mut Vec<String>, const_pool: &mut HashSet<i32>) {
+fn mem_load_64(dst: DoubleRegister, addr: RegisterWithInfo, code: &mut Vec<String>) {
 	if addr.get_const().is_some() {
 		todo!()
 	} else {
@@ -1217,7 +1217,7 @@ fn add_i64(dst: DoubleRegister, lhs: DoubleRegister, rhs: DoubleRegister, code: 
 		} else {
 		false
 		}
-	
+
 	*/
 
 	code.push(format!("scoreboard players set {carry} 0"));
@@ -1493,94 +1493,13 @@ fn bit_run_to_mask(run: Range<u32>) -> i32 {
 	v
 }
 
-fn emit_constant_or(dst: Register, lhs: RegisterWithInfo, rhs: i32, code: &mut Vec<String>, const_pool: &mut HashSet<i32>) {
+fn emit_constant_or(dst: Register, lhs: RegisterWithInfo, rhs: i32, code: &mut Vec<String>) {
 	let RegisterWithInfo(lhs, _lhs_info) = lhs;
 
 	code.push(format!("scoreboard players operation %param0%0 reg = {lhs}"));
 	code.push(format!("scoreboard players set %param1%0 reg {rhs}"));
 	code.push("function intrinsic:or".to_string());
 	code.push(format!("scoreboard players operation {dst} = %return%0 reg"));
-
-	return;
-
-
-	if dst != lhs {
-		code.push(format!("scoreboard players operation {dst} = {lhs}"));
-	}
-
-	if rhs == -1 || rhs == 0 {
-		if rhs == -1 {
-			code.push(format!("scoreboard players set {dst} -1"));
-		} else {
-		}
-		//todo!("missed optimization in const prop");
-	} else if rhs == i32::MIN {
-		code.push(format!("execute if score {dst} matches 0.. run scoreboard players operation {dst} reg += %%{}reg", i32::MIN));
-	} else if rhs.count_ones() == 1 {
-		let shift = rhs.trailing_zeros();
-		let thresh = 1 << shift;
-		let mask = 1 << (shift + 1);
-
-		const_pool.insert(mask);
-		let mask = Register::const_val(mask);
-
-		let tmp_dst = Register::temp_lo(1235);
-
-		code.push(format!("# ({}) = ({}) | ({:#X})", dst, lhs, rhs));
-		code.push(format!("scoreboard players operation {tmp_dst} = {lhs}"));
-		code.push(format!("scoreboard players operation {tmp_dst} %= {mask}"));
-		code.push(format!("execute unless score {tmp_dst} matches {thresh}.. run scoreboard players add {dst} {thresh}"));
-	} else if rhs.leading_zeros() + rhs.trailing_ones() == 32 {
-		let mask = 1 << rhs.trailing_ones();
-
-		let tmp_low_bits = Register::temp_lo(1235);
-
-		code.push(format!("# ({}) = ({}) | ({:#X})", dst, lhs, rhs));
-		code.push(format!("scoreboard players operation {tmp_low_bits} = {dst}"));
-		code.push(format!("scoreboard players operation {tmp_low_bits} %= %%{mask} reg"));
-		code.push(format!("scoreboard players operation {dst} -= {tmp_low_bits}"));
-		code.push(format!("scoreboard players add {dst} {rhs}"));
-	} else if rhs.leading_ones() + rhs.trailing_zeros() == 32 {
-		let mask = 1 << rhs.trailing_zeros();
-
-		code.push(format!("# ({}) = ({}) | ({:#X})", dst, lhs, rhs));
-		code.push(format!("scoreboard players operation {dst} %= %%{mask} reg"));
-		code.push(format!("scoreboard players remove {dst} {}", -rhs));
-	} else {
-		code.push(format!("scoreboard players operation %param0%0 reg = {lhs}"));
-		code.push(format!("scoreboard players set %param1%0 reg {rhs}"));
-		code.push("function intrinsic:or".to_string());
-		code.push(format!("scoreboard players operation {dst} = %return%0 reg"));
-
-		/* FIXME: THIS IS BROKEN. DO NOT USE.
-
-		let bit_runs = get_all_bit_runs(rhs).collect::<Vec<_>>();
-		if bit_runs.len() == 1 {
-			let run = bit_runs[0].clone();
-
-			let tmp_dst = Register::temp_lo(1235);
-			let tmp_dst2 = Register::temp_lo(1236);
-
-			code.push(format!("scoreboard players operation {tmp_dst} = {dst}"));
-			code.push(format!("scoreboard players operation {tmp_dst} %= %%{} reg", 1 << run.start));
-
-			code.push(format!("scoreboard players operation {tmp_dst2} = {dst}"));
-			code.push(format!("scoreboard players operation {tmp_dst2} %= %%{} reg", 1 << (run.end + 1)));
-			code.push(format!("scoreboard players operation {tmp_dst2} -= {tmp_dst}"));
-
-			code.push(format!("scoreboard players operation {dst} -= {tmp_dst}"));
-			code.push(format!("scoreboard players add {dst} {rhs}"));
-		} else {
-			//todo!("{:X?} {:#X}", lhs_info, rhs);
-			// TODO:
-			code.push(format!("scoreboard players operation %param0%0 reg = {lhs}"));
-			code.push(format!("scoreboard players set %param1%0 reg {rhs}"));
-			code.push("function intrinsic:or".to_string());
-			code.push(format!("scoreboard players operation {dst} = %return%0 reg"));
-		}
-
-		*/
-	}
 }
 
 fn emit_constant_and(dst: Register, lhs: RegisterWithInfo, rhs: i32, code: &mut Vec<String>, const_pool: &mut HashSet<i32>) {
@@ -1592,7 +1511,7 @@ fn emit_constant_and(dst: Register, lhs: RegisterWithInfo, rhs: i32, code: &mut 
 		}
 	} else if rhs.leading_zeros() + rhs.trailing_ones() == 32 {
 		let bit_run = get_single_bit_run(rhs).unwrap();
-		
+
 		assert_eq!(bit_run.start, 0);
 
 		if dst != lhs.0 {
@@ -1621,60 +1540,6 @@ fn emit_constant_and(dst: Register, lhs: RegisterWithInfo, rhs: i32, code: &mut 
 		code.push(format!("scoreboard players set %param1%0 reg {rhs}"));
 		code.push("function intrinsic:and".to_string());
 		code.push(format!("scoreboard players operation {dst} = %return%0 reg"));
-
-		/*
-		FIXME: THIS IS BROKEN. DO NOT USE.
-		code.push(format!("# ({}) = ({}) & ({:#X})", dst, lhs, rhs));
-
-		let tmp_dst = Register::temp_lo(1235);
-
-		code.push(format!("scoreboard players set {dst} 0"));
-		for bit_run in get_all_bit_runs(rhs) {
-			assert!(bit_run.end > bit_run.start);
-
-			if bit_run.start == 31 {
-				let int_min = i32::MIN;
-				const_pool.insert(int_min);
-				let int_min = Register::const_val(int_min);
-				code.push(format!("execute if score {lhs} matches ..-1 run scoreboard players operation {dst} += {int_min}"));
-				continue;
-			}
-
-			code.push(format!("scoreboard players operation {tmp_dst} = {lhs}"));
-			if bit_run.end == 32 {
-				// Do nothing, because we don't have to zero out any high bits
-			} else if bit_run.end == 31 {
-				let int_min = i32::MIN;
-				const_pool.insert(int_min);
-				let int_min = Register::const_val(int_min);
-
-				// Zero out just the high bit
-				code.push(format!("execute if score {tmp_dst} matches ..-1 run scoreboard players operation {tmp_dst} -= {int_min}"));
-			} else if bit_run.end < 31 {
-				// 0111
-				// end == 3
-				let modulus = 1 << bit_run.end;
-				const_pool.insert(modulus);
-				let modulus = Register::const_val(modulus);
-				code.push(format!("scoreboard players operation {tmp_dst} %= {modulus}"));
-			}
-
-			if bit_run.start > 0 {
-				// 1110
-				// start == 1
-				let tmp = Register::temp_lo(1234);
-				code.push(format!("scoreboard players operation {tmp} = {lhs}"));
-				
-				let modulus = 1 << bit_run.start;
-				const_pool.insert(modulus);
-				let modulus = Register::const_val(modulus);
-				code.push(format!("scoreboard players operation {tmp} %= {modulus}"));
-				code.push(format!("scoreboard players operation {tmp_dst} -= {tmp}"));
-			}
-
-			code.push(format!("scoreboard players operation {dst} += {tmp_dst}"));
-		}
-		*/
 	}
 }
 
@@ -1737,7 +1602,7 @@ fn emit_constant_xor(dst: Register, lhs: RegisterWithInfo, mut rhs: i32, code: &
 		code.push(format!("scoreboard players add {dst} 1"));
 		return;
 	}
-	
+
 	if let Ok(new_rhs) = emit_xor_low_bits(dst, rhs, code, const_pool) {
 		rhs = new_rhs;
 	}
@@ -1767,7 +1632,7 @@ fn emit_constant_xor(dst: Register, lhs: RegisterWithInfo, mut rhs: i32, code: &
 
 	// We can't optimize this XOR, so get rid of all the parts we tried to do.
 	code.truncate(old_code_len);
-	
+
 	// TODO:
 	code.push(format!("scoreboard players operation %param0%0 reg = {lhs}"));
 	code.push(format!("scoreboard players set %param1%0 reg {old_rhs}"));
@@ -1897,9 +1762,9 @@ fn emit_instr(instr: &LirInstr, parent: &LirProgram, code: &mut Vec<String>, con
 			code.push(format!("scoreboard players operation {dst_hi} = %sdiv_r_hi reg"));
 		}
 		&LirInstr::RemU64(dst, lhs, rhs) => {
-			let (p0_lo, p0_hi) = DoubleRegister::param(0).split_lo_hi();
-			let (p1_lo, p1_hi) = DoubleRegister::param(1).split_lo_hi();
-			let (ret_lo, ret_hi) = DoubleRegister::return_reg(0).split_lo_hi();
+			let (_, _) = DoubleRegister::param(0).split_lo_hi();
+			let (_, _) = DoubleRegister::param(1).split_lo_hi();
+			let (_, _) = DoubleRegister::return_reg(0).split_lo_hi();
 			let (lhs_lo, lhs_hi) = lhs.split_lo_hi();
 			let (rhs_lo, rhs_hi) = rhs.split_lo_hi();
 			let (dst_lo, dst_hi) = dst.split_lo_hi();
@@ -2072,10 +1937,10 @@ fn emit_instr(instr: &LirInstr, parent: &LirProgram, code: &mut Vec<String>, con
 				code.push("function intrinsic:and".to_string());
 				code.push(format!("scoreboard players operation {dst} = %return%0 reg"));
 			}
-		} 
+		}
 		&LirInstr::Or(dst, lhs, rhs) => {
 			if let Some(c) = rhs.get_const() {
-				emit_constant_or(dst, lhs, c, code, const_pool)
+				emit_constant_or(dst, lhs, c, code)
 			} else {
 				code.push(format!("scoreboard players operation %param0%0 reg = {lhs}"));
 				code.push(format!("scoreboard players operation %param1%0 reg = {rhs}"));
@@ -2122,7 +1987,7 @@ fn emit_instr(instr: &LirInstr, parent: &LirProgram, code: &mut Vec<String>, con
 			code.push(format!("execute if score {src_hi} matches 0 run scoreboard players add %return%0 reg 32"));
 			code.push(format!("scoreboard players operation {dst_lo} = %return%0 reg"));
 			code.push(format!("scoreboard players set {dst_hi} 0"));
-		} 
+		}
 		&LirInstr::Eqz(dst, src) => {
 			code.push(format!("execute store success score {dst} if score {src} matches 0"));
 		}
@@ -2133,7 +1998,7 @@ fn emit_instr(instr: &LirInstr, parent: &LirProgram, code: &mut Vec<String>, con
 			code.push(format!("execute store success score {dst} if score {src_lo} matches 0"));
 			code.push(format!("execute if score {dst} matches 1 run execute store success score {dst} if score {src_hi} matches 0"));
 		}
-		
+
 		&LirInstr::GtS(dst, lhs, rhs) => code.push(format!("execute store success score {dst} if score {lhs} > {rhs}")),
 		&LirInstr::GeS(dst, lhs, rhs) => code.push(format!("execute store success score {dst} if score {lhs} >= {rhs}")),
 		&LirInstr::LtS(dst, lhs, rhs) => code.push(format!("execute store success score {dst} if score {lhs} < {rhs}")),
@@ -2213,7 +2078,7 @@ fn emit_instr(instr: &LirInstr, parent: &LirProgram, code: &mut Vec<String>, con
 		&LirInstr::Store32(src, addr) => mem_store_32(src, addr, code, const_pool),
 		&LirInstr::Store16(src, addr) => mem_store_16(src, addr, code, const_pool),
 		&LirInstr::Store8 (src, addr) => mem_store_8 (src, addr, code),
-		&LirInstr::Load64(dst, addr) => mem_load_64(dst, addr, code, const_pool),
+		&LirInstr::Load64(dst, addr) => mem_load_64(dst, addr, code),
 		&LirInstr::Load32(dst, addr) => mem_load_32(dst, addr, code, const_pool),
 		&LirInstr::Load16(dst, addr) => mem_load_16(dst, addr, code),
 		&LirInstr::Load8 (dst, addr) => mem_load_8 (dst, addr, code),
@@ -2362,7 +2227,7 @@ fn emit_block(block_id: BlockId, block: &LirBasicBlock, parent: &LirProgram, con
 		}
 	}
 	code.push(format!("scoreboard players add {CMDS_RUN_VAR} {num_cmds}"));
-	
+
 	match &block.term {
 		&LirTerminator::Jump(target) => {
 			if jump_mode() == JumpMode::Direct {
@@ -2474,7 +2339,7 @@ fn emit_block(block_id: BlockId, block: &LirBasicBlock, parent: &LirProgram, con
 			}
 		}
 	}
-	
+
 	if jump_mode() == JumpMode::Direct {
 		code.push(format!("scoreboard players set {} 1", Register::cond_taken()));
 	}
@@ -2506,7 +2371,7 @@ pub fn load_intrinsics() -> Vec<Function> {
 				.filter(|l| !l.is_empty());
 
 			let func_name = format!("intrinsic:{}", file_name.strip_suffix(".mcfunction").unwrap());
-			let func_ident: FunctionIdent = parse_command(&func_name).unwrap();
+			let _func_ident: FunctionIdent = parse_command(&func_name).unwrap();
 
 			result.push(parse_function(&func_name, cmds));
 		} else {
@@ -2539,7 +2404,7 @@ pub fn load_intrinsics() -> Vec<Function> {
 	result
 }
 
-// make_export_func returns a datapack function 
+// make_export_func returns a datapack function
 pub fn make_export_func(name: &str, id: BlockId) -> Function {
 	let wrapper_name = format!("wasmrunner:{name}");
 	let wrapper_id = wrapper_name.parse().unwrap();
@@ -2750,7 +2615,7 @@ mod test {
 
 	use super::*;
 
-	fn test_constant_func<I, E, R, F>(lhs_vals: I, rhs: i32, emitter: E, ex: F) 
+	fn test_constant_func<I, E, R, F>(lhs_vals: I, rhs: i32, emitter: E, ex: F)
 		where
 			I: Iterator<Item=i32>,
 			E: FnOnce(Register, R, i32, &mut Vec<String>, &mut HashSet<i32>),
@@ -2903,11 +2768,11 @@ mod test {
 
 		let mut code = Vec::new();
 
-		let mut const_pool = HashSet::new();
+		let const_pool = HashSet::new();
 
 		let addr = Register::work_lo(0, 0);
 
-		mem_load_64(dst, addr.into(), &mut code, &mut const_pool);
+		mem_load_64(dst, addr.into(), &mut code);
 
 		let func = parse_function("wasmrunner:test_constant_memory_load", &code);
 		let func_id = func.id.clone();
@@ -2970,7 +2835,7 @@ mod test {
 		let cmd = "data modify storage wasm:scratch Pos set value [0d, 0d, 0d]".parse::<Command>().unwrap();
 		interp.execute_cmd(&cmd).unwrap();
 
-		let (addr_holder, addr_obj) = addr.scoreboard_pair();	
+		let (addr_holder, addr_obj) = addr.scoreboard_pair();
 		interp.set_named_score(&addr_holder, &addr_obj, offset);
 
 		let (dst_lo_holder, dst_lo_obj) = dst.lo().scoreboard_pair();
@@ -3130,7 +2995,7 @@ mod test {
 			let m0 = interp.get_named_score(&dst_holder, &dst_obj).unwrap();
 			interp.execute_cmd(&d1).unwrap();
 			let m1 = interp.get_named_score(&dst_holder, &dst_obj).unwrap();
-			
+
 			let actual = ((m1 as i64) << 32) | (m0 as u32 as i64);
 
 			let mut expected = before;

@@ -1,5 +1,5 @@
 //! Converts a WebAssembly file into an SSA-form program.
-//! 
+//!
 //! WebAssembly local variables are entirely removed in this stage.
 
 use std::{ops::{Index, IndexMut}, collections::HashMap};
@@ -296,20 +296,6 @@ impl SsaFuncBuilder {
 		self.counter += 1;
 	}
 
-	/*pub fn get_local_vars(&self, block_id: BlockId, locals: &[Type]) -> &[TypedSsaVar] {
-		let part = &self.blocks[block_id.block];
-		if part.has_new_locals {
-			&self.get(block_id).params[..locals.len()]
-		} else {
-			&[]
-		}
-	}
-
-	pub fn current_local_vars(&self, locals: &[Type]) -> &[TypedSsaVar] {
-		let id = BlockId { func: self.func, block: self.current_block };
-		self.get_local_vars(id, locals)
-	}*/
-
 	pub fn current_block_mut(&mut self) -> &mut SsaBasicBlock {
 		let id = BlockId { func: self.func, block: self.current_block };
 		self.get_mut(id)
@@ -345,7 +331,7 @@ impl SsaFuncBuilder {
 				(part_block.count, id, part_block.block)
 			})
 			.collect::<Vec<_>>();
-		
+
 		blocks.sort_by_key(|(c, _, _)| *c);
 
 		blocks.iter().enumerate().for_each(|(i, (c, _, _))| assert_eq!(i as i32, *c));
@@ -395,7 +381,7 @@ impl Validator {
 	pub fn pop_values<T: Copy + Into<UncertainType>>(&mut self, tys: &[T]) -> Vec<UncertainVar> {
 		self.value_stack.pop_many(tys, &self.control_stack)
 	}
-	
+
 	pub fn push_ctrl(&mut self, operator: ControlOp, start_vars: &[UncertainVar], start_types: Box<[ValType]>, end_types: Box<[ValType]>) {
 		self.control_stack.push(operator, start_vars, start_types, end_types, &mut self.value_stack);
 	}
@@ -548,7 +534,7 @@ impl ValidationState<'_> {
 			let addr = validator.pop_value_ty(ValType::I32.into());
 			let dst = alloc.new_i64();
 			validator.push_value(dst);
-			
+
 			if validator.reachable() {
 				builder.current_block_mut().body.push(f(memarg, dst, addr.unwrap().into()));
 			}
@@ -704,7 +690,7 @@ impl ValidationState<'_> {
 
 			Operator::I64ExtendI32S => make_i64_extend(SsaInstr::Extend32S, ValType::I32, builder, validator, alloc),
 			Operator::I64ExtendI32U => make_i64_extend(SsaInstr::Extend32U, ValType::I32, builder, validator, alloc),
-			
+
 
 			Operator::I32WrapI64 => {
 				let src = validator.pop_value_ty(ValType::I64.into());
@@ -720,7 +706,7 @@ impl ValidationState<'_> {
 			&Operator::I32Load16U { memarg } => make_i32_load(SsaInstr::Load16U, memarg, builder, validator, alloc),
 			&Operator::I32Load8U { memarg } => make_i32_load(SsaInstr::Load8U, memarg, builder, validator, alloc),
 			&Operator::I32Load8S { memarg } => make_i32_load(SsaInstr::Load8S, memarg, builder, validator, alloc),
-			
+
 			&Operator::I64Load { memarg } => make_i64_load(SsaInstr::Load64, memarg, builder, validator, alloc),
 			&Operator::I64Load32S { memarg } => make_i64_load(SsaInstr::Load32S, memarg, builder, validator, alloc),
 			&Operator::I64Load32U { memarg } => make_i64_load(SsaInstr::Load32U, memarg, builder, validator, alloc),
@@ -1010,7 +996,7 @@ impl ValidationState<'_> {
 
 					let false_target = JumpTarget {
 						label: false_label,
-						params: Vec::new(), 
+						params: Vec::new(),
 					};
 
 					builder.finish_block(SsaTerminator::BranchIf { cond, true_target, false_target });
@@ -1148,7 +1134,7 @@ impl ValidationState<'_> {
 					params.extend(label_vals);
 
 					let default = JumpTarget {
-						label: default_label, 
+						label: default_label,
 						params: params.clone()
 					};
 
@@ -1243,7 +1229,7 @@ impl ValidationState<'_> {
 }
 
 /// Adds the prologue to the given SSA function. See [validate] for usage.
-/// 
+///
 /// The prologue fetches the function parameters and initializes the other locals to zero.
 fn add_prologue(builder: &mut SsaFuncBuilder, func_ty: &FuncType) {
 	let start_locals = builder.current_locals.clone();

@@ -402,7 +402,7 @@ impl LirInterpreter {
 			}
 
 			// TODO: Check case with all zeros
-			&LirInstr::Ctz(dst, src) => do_unaryop(dst, src, &mut self.registers, |a| a.trailing_zeros() as i32), 
+			&LirInstr::Ctz(dst, src) => do_unaryop(dst, src, &mut self.registers, |a| a.trailing_zeros() as i32),
 			// TODO: Check case with all zeros
 			&LirInstr::Clz(dst, src) => do_unaryop(dst, src, &mut self.registers, |a| a.leading_zeros() as i32),
 
@@ -484,7 +484,7 @@ impl LirInterpreter {
 				data_hi.copy_from_slice(&self.memory[0].data[addr as usize + 4..][..4]);
 				let data_lo = i32::from_le_bytes(data_lo);
 				let data_hi = i32::from_le_bytes(data_hi);
-	
+
 				self.registers.set(dst.lo(), data_lo);
 				self.registers.set(dst.hi(), data_hi);
 			}

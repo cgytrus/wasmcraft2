@@ -59,7 +59,7 @@ impl DoubleRegister {
 	pub fn param(id: u32) -> DoubleRegister {
 		DoubleRegister::Param(id)
 	}
-	
+
 	pub fn global(id: u32) -> DoubleRegister {
 		DoubleRegister::Global(id)
 	}
@@ -170,7 +170,7 @@ impl fmt::Display for Register {
 }
 
 /// by default:
-/// 
+///
 /// work%0%lo
 
 #[derive(Clone, Debug)]
