@@ -546,12 +546,16 @@ pub fn do_block_const_prop_from(_id: BlockId, block: &SsaBasicBlock, constants: 
 							TypedValue::I32(c) => (c as u32 as u64) % 32,
 							TypedValue::I64(c) => (c as u64) % 64,
 						};
+						let b = match cst {
+							TypedValue::I32(_) => 31,
+							TypedValue::I64(_) => 63,
+						};
 
 						let mut dst_mask = msk;
 						dst_mask.set_bits >>= c;
 						dst_mask.clr_bits >>= c;
 						for i in 0..c {
-							dst_mask.clr_bits |= 1 << (31 - i)
+							dst_mask.clr_bits |= 1 << (b - i)
 						}
 						constants.insert(dst, dst_mask.into());
 					}
