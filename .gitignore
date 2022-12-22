@@ -2,3 +2,4 @@
 tests/wasm_suite.rs
 tests/wasm_suite/
 tests/server_test/
+.idea/
