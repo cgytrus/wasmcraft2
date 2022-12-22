@@ -540,6 +540,32 @@ impl ValidationState<'_> {
 			}
 		}
 
+		fn make_f32_load<F>(f: F, memarg: MemoryImmediate, builder: &mut SsaFuncBuilder, validator: &mut Validator, alloc: &mut SsaVarAlloc)
+			where
+				F: FnOnce(MemoryImmediate, TypedSsaVar, SsaVarOrConst) -> SsaInstr,
+		{
+			let addr = validator.pop_value_ty(ValType::I32.into());
+			let dst = alloc.new_f32();
+			validator.push_value(dst);
+
+			if validator.reachable() {
+				builder.current_block_mut().body.push(f(memarg, dst, addr.unwrap().into()));
+			}
+		}
+
+		fn make_f64_load<F>(f: F, memarg: MemoryImmediate, builder: &mut SsaFuncBuilder, validator: &mut Validator, alloc: &mut SsaVarAlloc)
+			where
+				F: FnOnce(MemoryImmediate, TypedSsaVar, SsaVarOrConst) -> SsaInstr,
+		{
+			let addr = validator.pop_value_ty(ValType::I32.into());
+			let dst = alloc.new_f64();
+			validator.push_value(dst);
+
+			if validator.reachable() {
+				builder.current_block_mut().body.push(f(memarg, dst, addr.unwrap().into()));
+			}
+		}
+
 		fn make_i32_store<F>(f: F, memarg: MemoryImmediate, builder: &mut SsaFuncBuilder, validator: &mut Validator, _: &mut SsaVarAlloc)
 			where
 				F: FnOnce(MemoryImmediate, TypedSsaVar, SsaVarOrConst) -> SsaInstr,
@@ -557,6 +583,30 @@ impl ValidationState<'_> {
 				F: FnOnce(MemoryImmediate, TypedSsaVar, SsaVarOrConst) -> SsaInstr,
 		{
 			let src = validator.pop_value_ty(ValType::I64.into());
+			let addr = validator.pop_value_ty(ValType::I32.into());
+
+			if validator.reachable() {
+				builder.current_block_mut().body.push(f(memarg, src.unwrap(), addr.unwrap().into()));
+			}
+		}
+
+		fn make_f32_store<F>(f: F, memarg: MemoryImmediate, builder: &mut SsaFuncBuilder, validator: &mut Validator, _: &mut SsaVarAlloc)
+			where
+				F: FnOnce(MemoryImmediate, TypedSsaVar, SsaVarOrConst) -> SsaInstr,
+		{
+			let src = validator.pop_value_ty(ValType::F32.into());
+			let addr = validator.pop_value_ty(ValType::I32.into());
+
+			if validator.reachable() {
+				builder.current_block_mut().body.push(f(memarg, src.unwrap(), addr.unwrap().into()));
+			}
+		}
+
+		fn make_f64_store<F>(f: F, memarg: MemoryImmediate, builder: &mut SsaFuncBuilder, validator: &mut Validator, _: &mut SsaVarAlloc)
+			where
+				F: FnOnce(MemoryImmediate, TypedSsaVar, SsaVarOrConst) -> SsaInstr,
+		{
+			let src = validator.pop_value_ty(ValType::F64.into());
 			let addr = validator.pop_value_ty(ValType::I32.into());
 
 			if validator.reachable() {
@@ -599,6 +649,16 @@ impl ValidationState<'_> {
 			&Operator::I64Const { value } => {
 				let var = alloc.new_i64();
 				builder.current_block_mut().body.push(SsaInstr::I64Set(var, value));
+				validator.push_value(var);
+			}
+			&Operator::F32Const { value } => {
+				let var = alloc.new_f32();
+				builder.current_block_mut().body.push(SsaInstr::I32Set(var, value.bits() as i32));
+				validator.push_value(var);
+			},
+			&Operator::F64Const { value } => {
+				let var = alloc.new_f64();
+				builder.current_block_mut().body.push(SsaInstr::I64Set(var, value.bits() as i64));
 				validator.push_value(var);
 			}
 
@@ -715,6 +775,10 @@ impl ValidationState<'_> {
 			&Operator::I64Load8S { memarg } => make_i64_load(SsaInstr::Load8S, memarg, builder, validator, alloc),
 			&Operator::I64Load8U { memarg } => make_i64_load(SsaInstr::Load8U, memarg, builder, validator, alloc),
 
+			&Operator::F32Load { memarg } => make_f32_load(SsaInstr::Load32S, memarg, builder, validator, alloc),
+
+			&Operator::F64Load { memarg } => make_f64_load(SsaInstr::Load64, memarg, builder, validator, alloc),
+
 			&Operator::I32Store { memarg } => make_i32_store(SsaInstr::Store32, memarg, builder, validator, alloc),
 			&Operator::I32Store16 { memarg } => make_i32_store(SsaInstr::Store16, memarg, builder, validator, alloc),
 			&Operator::I32Store8 { memarg } => make_i32_store(SsaInstr::Store8, memarg, builder, validator, alloc),
@@ -723,6 +787,10 @@ impl ValidationState<'_> {
 			&Operator::I64Store32 { memarg } => make_i64_store(SsaInstr::Store32, memarg, builder, validator, alloc),
 			&Operator::I64Store16 { memarg } => make_i64_store(SsaInstr::Store16, memarg, builder, validator, alloc),
 			&Operator::I64Store8 { memarg } => make_i64_store(SsaInstr::Store8, memarg, builder, validator, alloc),
+
+			&Operator::F32Store { memarg } => make_f32_store(SsaInstr::Store32, memarg, builder, validator, alloc),
+
+			&Operator::F64Store { memarg } => make_f64_store(SsaInstr::Store64, memarg, builder, validator, alloc),
 
 			&Operator::GlobalSet { global_index } => {
 				let ty = wasm_file.global(global_index).ty;
@@ -1341,6 +1409,12 @@ fn add_prologue(builder: &mut SsaFuncBuilder, func_ty: &FuncType) {
 				builder.current_block_mut().body.push(SsaInstr::I32Set(*local, 0));
 			}
 			ValType::I64 => {
+				builder.current_block_mut().body.push(SsaInstr::I64Set(*local, 0));
+			}
+			ValType::F32 => {
+				builder.current_block_mut().body.push(SsaInstr::I32Set(*local, 0));
+			}
+			ValType::F64 => {
 				builder.current_block_mut().body.push(SsaInstr::I64Set(*local, 0));
 			}
 			_ => todo!("{:?}", local),

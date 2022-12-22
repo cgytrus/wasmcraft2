@@ -133,8 +133,8 @@ fn lower_block<L>(
 		assert_eq!(lhs.ty(), rhs.ty());
 
 		match dst.ty() {
-			ValType::I32 => f(ra.get(dst.into_untyped()), map_ra_i32(lhs, ra), map_ra_i32(rhs, ra), block),
-			ValType::I64 => g(ra.get_double(dst.into_untyped()), map_ra_i64(lhs, ra), map_ra_i64(rhs, ra), block),
+			ValType::I32 | ValType::F32 => f(ra.get(dst.into_untyped()), map_ra_i32(lhs, ra), map_ra_i32(rhs, ra), block),
+			ValType::I64 | ValType::F64 => g(ra.get_double(dst.into_untyped()), map_ra_i64(lhs, ra), map_ra_i64(rhs, ra), block),
 			t => todo!("{:?}", t),
 		}
 	}
@@ -151,8 +151,8 @@ fn lower_block<L>(
 		assert_eq!(lhs.ty(), rhs.ty());
 
 		match dst.ty() {
-			ValType::I32 => block.push(f(ra.get(dst.into_untyped()), ra.get(lhs.into_untyped()), map_ra_i32(rhs, ra))),
-			ValType::I64 => block.push(g(ra.get_double(dst.into_untyped()), ra.get_double(lhs.into_untyped()), map_ra_i64(rhs, ra))),
+			ValType::I32 | ValType::F32 => block.push(f(ra.get(dst.into_untyped()), ra.get(lhs.into_untyped()), map_ra_i32(rhs, ra))),
+			ValType::I64 | ValType::F64 => block.push(g(ra.get_double(dst.into_untyped()), ra.get_double(lhs.into_untyped()), map_ra_i64(rhs, ra))),
 			t => todo!("{:?}", t),
 		}
 	}
@@ -171,13 +171,13 @@ fn lower_block<L>(
 		assert_eq!(lhs.ty(), rhs.ty());
 
 		match dst.ty() {
-			ValType::I32 => {
+			ValType::I32 | ValType::F32 => {
 				let d = ra.get(dst.into_untyped());
 				let l = ra.get(lhs.into_untyped());
 				let r = map_ra_i32(rhs, ra);
 				block.push(f(d, RegisterWithInfo(l, lhs_info), RegisterWithInfo(r, rhs_info)));
 			}
-			ValType::I64 => {
+			ValType::I64 | ValType::F64 => {
 				let dst = ra.get_double(dst.into_untyped());
 				let lhs = ra.get_double(lhs.into_untyped());
 				let rhs = map_ra_i64(rhs, ra);
@@ -217,12 +217,12 @@ fn lower_block<L>(
 
 		assert_eq!(lhs.ty(), rhs.ty());
 		match lhs.ty() {
-			ValType::I32 => {
+			ValType::I32 | ValType::F32 => {
 				let lhs = map_ra_i32(lhs, ra);
 				let rhs = map_ra_i32(rhs, ra);
 				block.push(f(dst, lhs, rhs))
 			}
-			ValType::I64 => {
+			ValType::I64 | ValType::F64 => {
 				let lhs = map_ra_i64(lhs, ra);
 				let rhs = map_ra_i64(rhs, ra);
 				block.push(g(dst, lhs, rhs));
@@ -239,8 +239,8 @@ fn lower_block<L>(
 		assert_eq!(dst.ty(), src.ty());
 
 		match dst.ty() {
-			ValType::I32 => block.push(f(ra.get(dst.into_untyped()), ra.get(src.into_untyped()))),
-			ValType::I64 => block.push(g(ra.get_double(dst.into_untyped()), ra.get_double(src.into_untyped()))),
+			ValType::I32 | ValType::F32 => block.push(f(ra.get(dst.into_untyped()), ra.get(src.into_untyped()))),
+			ValType::I64 | ValType::F64 => block.push(g(ra.get_double(dst.into_untyped()), ra.get_double(src.into_untyped()))),
 			t => todo!("{:?}", t)
 		}
 	}
@@ -281,8 +281,8 @@ fn lower_block<L>(
 		assert_eq!(mem.memory, 0);
 
 		let dst_lo = match dst.ty() {
-			ValType::I32 => ra.get(dst.into_untyped()), 
-			ValType::I64 => ra.get_double(dst.into_untyped()).lo(),
+			ValType::I32 | ValType::F32 => ra.get(dst.into_untyped()),
+			ValType::I64 | ValType::F64 => ra.get_double(dst.into_untyped()).lo(),
 			_ => todo!(),
 		};
 
@@ -331,7 +331,7 @@ fn lower_block<L>(
 			_ => panic!()
 		}
 
-		if dst.ty() == ValType::I64 {
+		if dst.ty() == ValType::I64 || dst.ty() == ValType::F64 {
 			let dst = ra.get_double(dst.into_untyped());
 			if signed {
 				block.push(LirInstr::SignExtend32(dst));
@@ -347,22 +347,22 @@ fn lower_block<L>(
 	{
 		let src_lo;
 		match src.ty() {
-			ValType::I32 => {
+			ValType::I32 | ValType::F32 => {
 				src_lo = ra.get(src.into_untyped());
 			}
-			ValType::I64 => {
+			ValType::I64 | ValType::F64 => {
 				src_lo = ra.get_double(src.into_untyped()).lo();
-			} 
+			}
 			_ => todo!()
 		}
 
 		match dst.ty() {
-			ValType::I32 => {
+			ValType::I32 | ValType::F32 => {
 				let dst = ra.get(dst.into_untyped());
 				block.push(LirInstr::Assign(dst, src_lo));
 				block.push(f(dst));
 			}
-			ValType::I64 => {
+			ValType::I64 | ValType::F64 => {
 				let dst = ra.get_double(dst.into_untyped());
 				block.push(LirInstr::Assign(dst.lo(), src_lo));
 				block.push(f(dst.lo()));
@@ -389,12 +389,12 @@ fn lower_block<L>(
 			&super::SsaInstr::Assign(lhs, rhs) => {
 				assert_eq!(lhs.ty(), rhs.ty());
 				match lhs.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						let lhs = ra.get(lhs.into_untyped());
 						let rhs = map_ra_i32(rhs, ra);
 						block.push(LirInstr::Assign(lhs, rhs));
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						let lhs = ra.get_double(lhs.into_untyped());
 						let rhs = map_ra_i64(rhs, ra);
 						block.push(LirInstr::Assign(lhs.lo(), rhs.lo()));
@@ -565,13 +565,13 @@ fn lower_block<L>(
 			super::SsaInstr::Popcnt(dst, src) => {
 				assert_eq!(dst.ty(), src.ty());
 				match dst.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						let dst = ra.get(dst.into_untyped());
 						let src = ra.get(src.into_untyped());
 						block.push(LirInstr::Set(dst, 0));
 						block.push(LirInstr::PopcntAdd(dst, src));
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						let dst = ra.get_double(dst.into_untyped());
 						let src = ra.get_double(src.into_untyped());
 						block.push(LirInstr::Set(dst.lo(), 0));
@@ -590,11 +590,11 @@ fn lower_block<L>(
 				let dst = ra.get(dst.into_untyped());
 
 				match src.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						let src = ra.get(src.into_untyped());
 						block.push(LirInstr::Eqz(dst, src));
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						let src = ra.get_double(src.into_untyped());
 						block.push(LirInstr::Eqz64(dst, src));
 					}
@@ -605,7 +605,7 @@ fn lower_block<L>(
 			super::SsaInstr::Load64(mem, dst, addr) => {
 				assert_eq!(mem.memory, 0);
 
-				assert_eq!(dst.ty(), ValType::I64);
+				assert!(dst.ty() == ValType::I64 || dst.ty() == ValType::F64);
 				let dst = ra.get_double(dst.into_untyped());
 
 				let addr = map_ra_i32(*addr, ra);
@@ -613,7 +613,7 @@ fn lower_block<L>(
 				if let Some(addr) = addr.get_const() {
 					let addr_lo = ra.get_const(addr + mem.offset as i32);
 					let addr_hi = ra.get_const(addr + mem.offset as i32 + 4);
-					
+
 					// TODO: Making this a Load64 could get better performance for unaligned loads.
 					// TODO: Analysis info
 					block.push(LirInstr::Load32(dst.lo(), addr_lo.into()));
@@ -637,7 +637,7 @@ fn lower_block<L>(
 			super::SsaInstr::Store64(mem, src, addr) => {
 				assert_eq!(mem.memory, 0);
 
-				assert_eq!(src.ty(), ValType::I64);
+				assert!(src.ty() == ValType::I64 || src.ty() == ValType::F64);
 				let src = ra.get_double(src.into_untyped());
 
 				assert_eq!(addr.ty(), ValType::I32);
@@ -689,11 +689,11 @@ fn lower_block<L>(
 
 			super::SsaInstr::LocalSet(dst, src) => {
 				match src.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						let reg = ra.get(src.into_untyped());
 						block.push(LirInstr::LocalSet(*dst, Half::Lo, reg));
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						let reg = ra.get_double(src.into_untyped());
 						block.push(LirInstr::LocalSet(*dst, Half::Lo, reg.lo()));
 						block.push(LirInstr::LocalSet(*dst, Half::Hi, reg.hi()));
@@ -703,11 +703,11 @@ fn lower_block<L>(
 			}
 			super::SsaInstr::LocalGet(dst, src) => {
 				match dst.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						let reg = ra.get(dst.into_untyped());
 						block.push(LirInstr::LocalGet(reg, *src, Half::Lo));
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						let reg = ra.get_double(dst.into_untyped());
 						block.push(LirInstr::LocalGet(reg.lo(), *src, Half::Lo));
 						block.push(LirInstr::LocalGet(reg.hi(), *src, Half::Hi));
@@ -717,12 +717,12 @@ fn lower_block<L>(
 			}
 			super::SsaInstr::ParamGet(dst, src) => {
 				match dst.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						let dst = ra.get(dst.into_untyped());
 						let src = Register::param_lo(*src);
 						block.push(LirInstr::Assign(dst, src));
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						let dst = ra.get_double(dst.into_untyped());
 						let src = DoubleRegister::param(*src);
 						block.push(LirInstr::Assign(dst.lo(), src.lo()));
@@ -735,15 +735,15 @@ fn lower_block<L>(
 			&super::SsaInstr::Extend8S(dst, src) => do_signext32(dst, src, &mut block, ra, LirInstr::SignExtend8),
 			&super::SsaInstr::Extend16S(dst, src) => do_signext32(dst, src, &mut block, ra, LirInstr::SignExtend16),
 			&super::SsaInstr::Extend32S(dst, src) => {
-				assert_eq!(dst.ty(), ValType::I64);
+				assert!(dst.ty() == ValType::I64 || dst.ty() == ValType::F64);
 				let dst = ra.get_double(dst.into_untyped());
 
 				let src_lo;
 				match src.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						src_lo = ra.get(src.into_untyped());
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						src_lo = ra.get_double(src.into_untyped()).lo();
 					}
 					_ => todo!()
@@ -753,15 +753,15 @@ fn lower_block<L>(
 				block.push(LirInstr::SignExtend32(dst));
 			}
 			&super::SsaInstr::Extend32U(dst, src) => {
-				assert_eq!(dst.ty(), ValType::I64);
+				assert!(dst.ty() == ValType::I64 || dst.ty() == ValType::F64);
 				let dst = ra.get_double(dst.into_untyped());
 
 				let src_lo;
 				match src.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						src_lo = ra.get(src.into_untyped());
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						src_lo = ra.get_double(src.into_untyped()).lo();
 					}
 					_ => todo!()
@@ -771,29 +771,37 @@ fn lower_block<L>(
 				block.push(LirInstr::Set(dst.hi(), 0));
 			}
 			super::SsaInstr::Wrap(dst, src) => {
-				assert_eq!(dst.ty(), ValType::I32);
-				assert_eq!(src.ty(), ValType::I64);
+				assert!(dst.ty() == ValType::I32 || dst.ty() == ValType::F32);
+				assert!(src.ty() == ValType::I64 || src.ty() == ValType::F64);
 
 				let dst = ra.get(dst.into_untyped());
 				let src = ra.get_double(src.into_untyped());
 				block.push(LirInstr::Assign(dst, src.lo()));
 			}
 			super::SsaInstr::Select { dst, true_var, false_var, cond } => {
-				assert_eq!(cond.ty(), ValType::I32);
+				assert!(cond.ty() == ValType::I32);
 				let cond = ra.get(cond.into_untyped());
 
-				assert_eq!(dst.ty(), true_var.ty());
-				assert_eq!(dst.ty(), false_var.ty());
+				assert!(dst.ty() == true_var.ty() ||
+					dst.ty() == ValType::I32 && true_var.ty() == ValType::F32 ||
+					dst.ty() == ValType::F32 && true_var.ty() == ValType::I32 ||
+					dst.ty() == ValType::I64 && true_var.ty() == ValType::F64 ||
+					dst.ty() == ValType::F64 && true_var.ty() == ValType::I64);
+				assert!(dst.ty() == false_var.ty() ||
+					dst.ty() == ValType::I32 && false_var.ty() == ValType::F32 ||
+					dst.ty() == ValType::F32 && false_var.ty() == ValType::I32 ||
+					dst.ty() == ValType::I64 && false_var.ty() == ValType::F64 ||
+					dst.ty() == ValType::F64 && false_var.ty() == ValType::I64);
 
 				match dst.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						let dst = ra.get(dst.into_untyped());
 						let true_reg = map_ra_i32(*true_var, ra);
 						let false_reg = map_ra_i32(*false_var, ra);
 
 						block.push(LirInstr::Select { dst, true_reg, false_reg, cond });
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						let dst = ra.get_double(dst.into_untyped());
 						let true_reg = map_ra_i64(*true_var, ra);
 						let false_reg = map_ra_i64(*false_var, ra);
@@ -1116,12 +1124,12 @@ fn lower_block<L>(
 		crate::ssa::SsaTerminator::Return(return_vars) => {
 			for (idx, var) in return_vars.iter().enumerate() {
 				match var.ty() {
-					ValType::I32 => {
+					ValType::I32 | ValType::F32 => {
 						let src = ra.get(var.into_untyped());
 						let dst = Register::return_lo(idx as u32);
 						block.push(LirInstr::Assign(dst, src));
 					}
-					ValType::I64 => {
+					ValType::I64 | ValType::F64 => {
 						let src = ra.get_double(var.into_untyped());
 						let dst = DoubleRegister::return_reg(idx as u32);
 						block.push(LirInstr::Assign(dst.lo(), src.lo()));
@@ -1143,12 +1151,12 @@ fn lower_block<L>(
 fn emit_copy_to_params(block: &mut Vec<LirInstr>, vars: &[TypedSsaVar], ra: &mut dyn RegAlloc) {
 	for (id, var) in vars.iter().enumerate() {
 		match var.ty() {
-			ValType::I32 => {
+			ValType::I32 | ValType::F32 => {
 				let dst = Register::param_lo(id as u32);
 				let src = ra.get(var.into_untyped());
 				block.push(LirInstr::Assign(dst, src));
 			}
-			ValType::I64 => {
+			ValType::I64 | ValType::F64 => {
 				let dst = DoubleRegister::param(id as u32);
 				let src = ra.get_double(var.into_untyped());
 				block.push(LirInstr::Assign(dst.lo(), src.lo()));
@@ -1162,12 +1170,12 @@ fn emit_copy_to_params(block: &mut Vec<LirInstr>, vars: &[TypedSsaVar], ra: &mut
 fn emit_copy_from_returns(block: &mut Vec<LirInstr>, vars: &[TypedSsaVar], ra: &mut dyn RegAlloc) {
 	for (id, var) in vars.iter().enumerate() {
 		match var.ty() {
-			ValType::I32 => {
+			ValType::I32 | ValType::F32 => {
 				let dst = ra.get(var.into_untyped());
 				let src = Register::return_lo(id as u32);
 				block.push(LirInstr::Assign(dst, src));
 			}
-			ValType::I64 => {
+			ValType::I64 | ValType::F64 => {
 				let dst = ra.get_double(var.into_untyped());
 				let src = DoubleRegister::return_reg(id as u32);
 				block.push(LirInstr::Assign(dst.lo(), src.lo()));
@@ -1181,12 +1189,12 @@ fn emit_copy_from_returns(block: &mut Vec<LirInstr>, vars: &[TypedSsaVar], ra: &
 fn get_save_reg_list(to_save: &[TypedSsaVar], ra: &mut dyn RegAlloc) -> Vec<Register> {
 	to_save.iter().flat_map(|var| {
 		match var.ty() {
-			ValType::I32 => {
+			ValType::I32 | ValType::F32 => {
 				let reg = ra.get(var.into_untyped());
 				[reg, reg].into_iter().take(1)
-				
+
 			}
-			ValType::I64 => {
+			ValType::I64 | ValType::F64 => {
 				let reg = ra.get_double(var.into_untyped());
 				[reg.lo(), reg.hi()].into_iter().take(2)
 			}
@@ -1218,16 +1226,16 @@ fn emit_copy(block: &mut Vec<LirInstr>, in_params: &[TypedSsaVar], out_params: &
 
 	let param_pairs = in_params.iter().zip(out_params.iter()).filter(|(i, o)| {
 		match i.ty() {
-			ValType::I32 => ra.get(i.into_untyped()) != ra.get(o.into_untyped()),
-			ValType::I64 => ra.get_double(i.into_untyped()) != ra.get_double(o.into_untyped()),
+			ValType::I32 | ValType::F32 => ra.get(i.into_untyped()) != ra.get(o.into_untyped()),
+			ValType::I64 | ValType::F64 => ra.get_double(i.into_untyped()) != ra.get_double(o.into_untyped()),
 			_ => todo!(),
 		}
 	});
 
 	let reg_pairs = param_pairs.flat_map(|(i, o)| {
 		match i.ty() {
-			ValType::I32 => vec![(ra.get(i.into_untyped()), ra.get(o.into_untyped()))],
-			ValType::I64 => vec![
+			ValType::I32 | ValType::F32 => vec![(ra.get(i.into_untyped()), ra.get(o.into_untyped()))],
+			ValType::I64 | ValType::F64 => vec![
 				(ra.get_double(i.into_untyped()).lo(), ra.get_double(o.into_untyped()).lo()),
 				(ra.get_double(i.into_untyped()).hi(), ra.get_double(o.into_untyped()).hi()),
 			],
@@ -1274,10 +1282,10 @@ fn gen_prologue(ssa_func: &SsaFunction, ssa_program: &SsaProgram, ra: &mut dyn R
 	for (idx, (local, param)) in locals.iter().zip(ssa_func.params.iter()).enumerate() {
 		assert_eq!(*local, *param);
 		match param {
-			ValType::I32 => {
+			ValType::I32 | ValType::F32 => {
 				result.push(LirInstr::LocalSet(idx as u32, Half::Lo, Register::param_lo(idx as u32)));
 			}
-			ValType::I64 => {
+			ValType::I64 | ValType::F64 => {
 				result.push(LirInstr::LocalSet(idx as u32, Half::Lo, Register::param_lo(idx as u32)));
 				result.push(LirInstr::LocalSet(idx as u32, Half::Hi, Register::param_hi(idx as u32)));
 			}
@@ -1288,10 +1296,10 @@ fn gen_prologue(ssa_func: &SsaFunction, ssa_program: &SsaProgram, ra: &mut dyn R
 	if MANUALLY_ZERO_LOCALS {
 		for (idx, local) in locals.iter().enumerate().skip(ssa_func.params.len()) {
 			match *local {
-				ValType::I32 => {
+				ValType::I32 | ValType::F32 => {
 					result.push(LirInstr::LocalSet(idx as u32, Half::Lo, ra.get_const(0)));
 				}
-				ValType::I64 => {
+				ValType::I64 | ValType::F64 => {
 					result.push(LirInstr::LocalSet(idx as u32, Half::Lo, ra.get_const(0)));
 					result.push(LirInstr::LocalSet(idx as u32, Half::Hi, ra.get_const(0)));
 				}
