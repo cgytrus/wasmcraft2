@@ -1295,19 +1295,20 @@ pub fn validate(wasm_file: &WasmFile, func: usize) -> SsaFunction {
 	let return_vals = state.validator.value_stack.0.iter().map(|v| v.unwrap()).collect();
 	state.builder.finish_block(SsaTerminator::Return(return_vals));
 
-	println!("{:?}", func_ty);
-	println!("{:?}", state.validator.control_stack);
-	println!("{:?}\n", state.validator.value_stack);
+	//println!("{:?}", func_ty);
+	//println!("{:?}", state.validator.control_stack);
+	//println!("{:?}\n", state.validator.value_stack);
 
 	let (_, blocks) = state.builder.finish();
 
 	for (_block_idx, (block_id, block)) in blocks.iter().enumerate() {
-		println!("==== block {:?} ==== ", block_id);
-		println!("parameters: {:?}", block.params);
-		for instr in block.body.iter() {
-			println!("{:?}", instr);
-		}
-		println!("{:?}\n", block.term);
+		println!("block {:?}", block_id);
+		//println!("==== block {:?} ==== ", block_id);
+		//println!("parameters: {:?}", block.params);
+		//for instr in block.body.iter() {
+		//	println!("{:?}", instr);
+		//}
+		//println!("{:?}\n", block.term);
 	}
 
 	/*let mut changed = true;

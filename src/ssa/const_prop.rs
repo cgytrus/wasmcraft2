@@ -232,7 +232,7 @@ fn print_state_diff(before: &StaticState, after: &StaticState) {
 }
 
 pub fn get_func_constants(func: &SsaFunction) -> LocalBlockMap<StaticState> {
-	println!("started const prop for function {}", func.func_id());
+	//println!("started const prop for function {}", func.func_id());
 
 	let pred_info = PredInfo::new(func);
 
