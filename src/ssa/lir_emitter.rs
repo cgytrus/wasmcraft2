@@ -646,7 +646,7 @@ fn lower_block<L>(
 				if let Some(c) = addr.get_const() {
 					let addr_lo = c + mem.offset as i32;
 					let addr_hi = c + mem.offset as i32 + 4;
-					
+
 					block.push(LirInstr::Store32(src.lo(), ra.get_const(addr_lo).into()));
 					block.push(LirInstr::Store32(src.hi(), ra.get_const(addr_hi).into()));
 				} else {
@@ -999,6 +999,13 @@ fn lower_block<L>(
 			&super::SsaInstr::PutChar(v) => {
 				let reg = ra.get(v.unwrap_i32());
 				block.push(LirInstr::PutChar(reg));
+			}
+			&super::SsaInstr::WasiProcExit(v) => {
+				let reg = ra.get(v.unwrap_i32());
+				block.push(LirInstr::WasiProcExit(reg));
+			}
+			&super::SsaInstr::Todo(msg) => {
+				block.push(LirInstr::Todo(msg));
 			}
 		}
 	}

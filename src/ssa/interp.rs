@@ -672,7 +672,9 @@ impl SsaInterpreter {
 					let value = v.eval(&frame.var_context).unwrap().into_i32().unwrap();
 					println!("{:?}", value);
 				}
-				super::SsaInstr::PutChar(_) => todo!(),
+				super::SsaInstr::PutChar(_) |
+				super::SsaInstr::WasiProcExit(_) => todo!(),
+				super::SsaInstr::Todo(msg) => todo!("{}", msg),
 
 				super::SsaInstr::TurtleGetBlock(dst) => {
 					frame.var_context.insert(dst.into_untyped(), 0.into());

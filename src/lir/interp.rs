@@ -567,6 +567,8 @@ impl LirInterpreter {
 			LirInstr::TurtlePaste |
 			LirInstr::PrintInt(_) |
 			LirInstr::PutChar(_) => panic!("attempt to use minecraft IO from LIR interpreter"),
+			LirInstr::WasiProcExit(_) => todo!(),
+			LirInstr::Todo(msg) => todo!("{}", msg),
 		}
 
 		if incr_pc {

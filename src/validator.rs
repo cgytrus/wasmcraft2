@@ -900,6 +900,23 @@ impl ValidationState<'_> {
 
 								builder.current_block_mut().body.push(SsaInstr::PutChar(params[0]));
 							}
+							("wasi_snapshot_preview1", "proc_exit") => {
+								assert_eq!(params.len(), 1);
+								assert_eq!(returns.len(), 0);
+
+								builder.current_block_mut().body.push(SsaInstr::WasiProcExit(params[0]));
+							}
+							("wasi_snapshot_preview1", _) => {
+								let idx = wasm_file.find_func(format!("__wasi_impl_{}", import.field).as_str());
+								if idx.is_none() {
+									todo!("{:?}", import);
+								}
+								builder.current_block_mut().body.push(SsaInstr::Call {
+									function_index: idx.unwrap() as u32,
+									params,
+									returns,
+								});
+							}
 							_ => todo!("{:?}", import),
 						}
 					} else {
@@ -1209,6 +1226,7 @@ impl ValidationState<'_> {
 			}
 
 			&Operator::MemoryGrow { mem, mem_byte } => {
+				builder.current_block_mut().body.push(SsaInstr::Todo("memory.grow"));
 				if mem != 0 || mem_byte != 0 {
 					todo!()
 				}
@@ -1217,12 +1235,88 @@ impl ValidationState<'_> {
 				let _n = validator.pop_value_ty(ValType::I32.into());
 				self.visit_operator(&Operator::I32Const { value: -1 });
 			}
+			&Operator::MemoryCopy { src, dst } => {
+				//builder.current_block_mut().body.push(SsaInstr::Todo("memory.copy"));
+				if src != 0 || dst != 0 {
+					todo!()
+				}
+
+				let func_name = "__op_impl_MemoryCopy";
+
+				let idx = wasm_file.find_func(func_name);
+				if idx.is_none() {
+					todo!("{:?}, you can implement it by exporting {}", op, func_name);
+				}
+				let idx = idx.unwrap();
+				let func_ty = wasm_file.func_type(idx);
+
+				let params = validator.pop_values(&func_ty.params);
+				let params: Option<Vec<TypedSsaVar>> = params.into_iter().map(Option::from).collect::<Option<Vec<_>>>();
+				let returns = func_ty.returns.iter().map(|ty| alloc.new_typed(*ty)).collect::<Vec<_>>();
+
+				validator.push_values(&returns);
+
+				builder.current_block_mut().body.push(SsaInstr::Call {
+					function_index: idx as u32,
+					params: params.unwrap(),
+					returns,
+				});
+
+				// TODO:
+				//let src = validator.pop_value_ty(ValType::I32.into()).unwrap();
+				//let dst = validator.pop_value_ty(ValType::I32.into()).unwrap();
+				//let size = validator.pop_value_ty(ValType::I32.into()).unwrap();
+			}
+			&Operator::MemorySize { mem, mem_byte } => {
+				builder.current_block_mut().body.push(SsaInstr::Todo("memory.size"));
+				if mem != 0 || mem_byte != 0 {
+					todo!()
+				}
+
+				// TODO:
+				self.visit_operator(&Operator::I32Const { value: -1 });
+			}
+			&Operator::MemoryFill { mem } => {
+				builder.current_block_mut().body.push(SsaInstr::Todo("memory.fill"));
+				if mem != 0 {
+					todo!()
+				}
+
+				// TODO:
+				let _n = validator.pop_value_ty(ValType::I32.into());
+				let _n = validator.pop_value_ty(ValType::I32.into());
+				self.visit_operator(&Operator::I32Const { value: -1 });
+			}
 
 			Operator::Nop => {},
 			Operator::Unreachable => {
 				validator.mark_unreachable();
 			}
-			_ => todo!("{:?}", op),
+			_ => {
+				let func_name = format!("__op_impl_{:?}", op);
+				if func_name.contains(' ') {
+					todo!("{:?}", op);
+				}
+
+				let idx = wasm_file.find_func(func_name.as_str());
+				if idx.is_none() {
+					todo!("{:?}, you can implement it by exporting {}", op, func_name);
+				}
+				let idx = idx.unwrap();
+				let func_ty = wasm_file.func_type(idx);
+
+				let params = validator.pop_values(&func_ty.params);
+				let params: Option<Vec<TypedSsaVar>> = params.into_iter().map(Option::from).collect::<Option<Vec<_>>>();
+				let returns = func_ty.returns.iter().map(|ty| alloc.new_typed(*ty)).collect::<Vec<_>>();
+
+				validator.push_values(&returns);
+
+				builder.current_block_mut().body.push(SsaInstr::Call {
+					function_index: idx as u32,
+					params: params.unwrap(),
+					returns,
+				});
+			}
 		}
 
 	}

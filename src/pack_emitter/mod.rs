@@ -2193,6 +2193,22 @@ fn emit_instr(instr: &LirInstr, parent: &LirProgram, code: &mut Vec<String>, con
 			code.push(format!("scoreboard players operation %param0%0 reg = {i}"));
 			code.push("function intrinsic:put_char".to_string());
 		}
+		LirInstr::WasiProcExit(i) => {
+			let mut s = String::new();
+			s.push_str(r#"tellraw @a [{"text":"Program finished with exit code "},{"score":{"name":""#);
+			let i = i.to_string();
+			let (i, _) = i.split_once(' ').unwrap();
+			s.push_str(i);
+			s.push_str(r#"","objective":"reg"}}]"#);
+			code.push(s);
+		}
+		LirInstr::Todo(msg) => {
+			let mut s = String::new();
+			s.push_str(r#"tellraw @a [{"text":"TODO: "#);
+			s.push_str(*msg);
+			s.push_str(r#""}]"#);
+			code.push(s);
+		}
 	}
 }
 

@@ -318,6 +318,8 @@ pub enum LirInstr {
 	TurtlePaste,
 	PrintInt(Register),
 	PutChar(Register),
+	WasiProcExit(Register),
+	Todo(&'static str),
 
 	PushReturnAddr(BlockId),
 	PopReturnAddr,
