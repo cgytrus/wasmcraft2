@@ -1344,17 +1344,19 @@ pub fn validate(wasm_file: &WasmFile, func: usize) -> SsaFunction {
 
 /// Converts an entire WebAssembly file into an SSA-form program.
 pub fn wasm_to_ssa(ctx: &CompileContext, wasm_file: &WasmFile) -> SsaProgram {
-	let mut code = Vec::new();
+	use rayon::prelude::*;
 
+	let mut code = Vec::new();
 	let mut local_types = HashMap::new();
 
-	for func in 0..wasm_file.functions.functions.len() {
-		if wasm_file.func_is_defined(func) {
-			let ssa_func = validate(wasm_file, func);
-			code.push(ssa_func);
-			local_types.insert(func, wasm_file.func_locals(func));
-		}
-
+	for (func, ssa_func, func_locals) in (0..wasm_file.functions.functions.len()).into_par_iter()
+		.filter(|func| wasm_file.func_is_defined(*func)).map(|func| {
+		let ssa_func = validate(wasm_file, func);
+		let func_locals = wasm_file.func_locals(func);
+		(func, ssa_func, func_locals)
+	}).collect::<Vec<_>>() {
+		code.push(ssa_func);
+		local_types.insert(func, func_locals);
 	}
 
 	let globals = wasm_file.globals().iter().map(|global| {
@@ -1451,19 +1453,19 @@ pub fn wasm_to_ssa(ctx: &CompileContext, wasm_file: &WasmFile) -> SsaProgram {
 	};
 
 	if ctx.do_const_prop {
-		for func in program.code.iter_mut() {
+		program.code.par_iter_mut().for_each(|func| {
 			crate::ssa::const_prop::do_func_const_prop(func);
-		}
+		});
 	}
 
 	if ctx.do_dead_code_elim {
 		crate::ssa::dce::do_dead_code_elim(&mut program);
 	}
 
-	for func in program.code.iter() {
+	program.code.par_iter().for_each(|func| {
 		validate_ssa_jump_params(func);
-	}
-	
+	});
+
 	program
 }
 

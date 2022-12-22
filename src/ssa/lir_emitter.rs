@@ -1341,11 +1341,20 @@ fn lower(ctx: &CompileContext, ssa_func: &SsaFunction, ssa_program: &SsaProgram,
 }
 
 pub fn convert(ctx: &CompileContext, ssa_program: SsaProgram) -> LirProgram {
+	use rayon::prelude::*;
+
 	let call_graph = CallGraph::new(&ssa_program);
 
 	let mut constants = HashSet::new();
 
-	let code = ssa_program.code.iter().map(|block| lower(ctx, block, &ssa_program, &call_graph, &mut constants)).collect::<Vec<_>>();
+	let code = ssa_program.code.par_iter().map(|block| {
+		let mut consts = HashSet::new();
+		let res = lower(ctx, block, &ssa_program, &call_graph, &mut consts);
+		(consts, res)
+	}).collect::<Vec<_>>().into_iter().map(|john| {
+		constants.extend(john.0.into_iter());
+		john.1
+	}).collect::<Vec<_>>();
 
 	if ctx.dump_lir {
 		for (func_id, func) in code.iter().enumerate() {

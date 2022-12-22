@@ -1,9 +1,10 @@
 use std::collections::HashSet;
 
 use super::{SsaProgram, liveness::{LivenessInfo, FullLivenessInfo}, BlockId, SsaBasicBlock, SsaTerminator};
+use rayon::prelude::*;
 
 pub fn do_dead_code_elim(program: &mut SsaProgram) {
-	for func in program.code.iter_mut() {
+	program.code.par_iter_mut().for_each(|func| {
 		let mut reachable_blocks = HashSet::new();
 
 		let mut to_visit = vec![func.entry_point_id()];
@@ -21,19 +22,19 @@ pub fn do_dead_code_elim(program: &mut SsaProgram) {
 				func.code.remove(idx);
 			}
 		}
-	}
+	});
 
-	for func in program.code.iter_mut() {
+	program.code.par_iter_mut().for_each(|func| {
 		let live_info = FullLivenessInfo::analyze(func);
-		
+
 		for (block_id, block) in func.iter_mut() {
 			let changes = get_dce_changes(block_id, block, &live_info);
 
 			apply_changes(block, &changes);
 		}
-	}
+	});
 
-	for func in program.code.iter_mut() {
+	program.code.par_iter_mut().for_each(|func| {
 		// Safe to precalculate it once because DCE doesn't change overall control-flow.
 		let pred_info = super::liveness::PredInfo::new(func);
 
@@ -65,7 +66,7 @@ pub fn do_dead_code_elim(program: &mut SsaProgram) {
 		}
 
 		println!("Did DCE on {}", func.func_id());
-	}
+	});
 }
 
 fn remove_from_target(_block_id: BlockId, child: BlockId, block: &mut SsaBasicBlock, mut indices: &[usize]) {
