@@ -316,11 +316,15 @@ fn try_merge(sets: &mut RegisterSet, block_id: BlockId, instr_idx: usize, dst: &
 	}
 
 	if dst_set.live_range.is_empty() {
-		panic!("merging to dead destination {:?} {:?}", block_id, dst);
+		//panic!("merging to dead destination {:?} {:?}", block_id, dst);
+		println!("merging to dead destination {:?} {:?}", block_id, dst);
+		return;
 	}
 
 	if src_set.live_range.is_empty() {
-		panic!("merging from dead source")
+		//panic!("merging from dead source");
+		println!("merging from dead source");
+		return;
 	}
 
 	let overlap = dst_set.live_range.overlap(&src_set.live_range);
