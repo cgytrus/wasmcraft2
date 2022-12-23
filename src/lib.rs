@@ -30,6 +30,8 @@ const CODEGEN_STAGE: CodegenStage = CodegenStage::Datapack;
 enum RegAllocMode {
     /// No-op regalloc. Faster compilation, slower output.
     Noop,
+    /// Use full regalloc for smaller functions and no-op for bigger. Balanced compilation and output speed? TODO: optimize full and remove this option
+    Auto,
     /// Full regalloc. Slower compilation, faster output.
     Full,
 }
@@ -132,6 +134,11 @@ impl CompileContext {
 				default_dead_code_elim = false;
 			}
 			1 => {
+				default_regalloc = RegAllocMode::Auto;
+				default_const_prop = true;
+				default_dead_code_elim = true;
+			}
+			2 => {
 				default_regalloc = RegAllocMode::Full;
 				default_const_prop = true;
 				default_dead_code_elim = true;
@@ -170,6 +177,11 @@ impl CompileContext {
 				do_dead_code_elim = false;
 			}
 			1 => {
+				regalloc = RegAllocMode::Auto;
+				do_const_prop = true;
+				do_dead_code_elim = true;
+			}
+			2 => {
 				regalloc = RegAllocMode::Full;
 				do_const_prop = true;
 				do_dead_code_elim = true;

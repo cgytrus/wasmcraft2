@@ -1314,6 +1314,14 @@ fn gen_prologue(ssa_func: &SsaFunction, ssa_program: &SsaProgram, ra: &mut dyn R
 fn lower(ctx: &CompileContext, ssa_func: &SsaFunction, ssa_program: &SsaProgram, call_graph: &CallGraph, constant_pool: &mut HashSet<i32>) -> LirFunction {
 	let mut reg_alloc: Box<dyn RegAlloc> = match ctx.regalloc {
 		crate::RegAllocMode::Noop => Box::new(NoopRegAlloc::analyze(ssa_func)),
+		crate::RegAllocMode::Auto => {
+			let instr_count = ssa_func.code.iter().fold(0 as usize, |accum, block| accum + block.1.body.len());
+			let too_much = instr_count > 1300;
+			if too_much {
+				println!("Using no-op regalloc on func {}, has too many ({}) instructions, will take too long", ssa_func.func_id(), instr_count);
+			}
+			if too_much { Box::new(NoopRegAlloc::analyze(ssa_func)) } else { Box::new(FullRegAlloc::analyze(ssa_func)) }
+		},
 		crate::RegAllocMode::Full => Box::new(FullRegAlloc::analyze(ssa_func)),
 	};
 
