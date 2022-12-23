@@ -2495,7 +2495,7 @@ impl Datapack {
     /// Creates a datapack with the given root directory, erasing the previous contents of the folder.
     pub fn save(&self, output_folder: &Path) -> Result<(), std::io::Error> {
         if output_folder.exists() {
-            eprintln!("Removing previous contents of output directory");
+            println!("Removing previous contents of output directory");
             std::fs::remove_dir_all(output_folder)?;
         }
 
@@ -2588,6 +2588,7 @@ pub fn persist_program(folder_path: &Path, funcs: &[Function]) {
 	let datapack = Datapack::new();
 
 	datapack.save(folder_path).unwrap();
+	println!("Writing output");
 	for func in funcs.iter() {
 		if func.id.namespace == "intrinsic" {
 			continue;

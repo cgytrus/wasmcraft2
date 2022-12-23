@@ -1329,8 +1329,6 @@ fn lower(ctx: &CompileContext, ssa_func: &SsaFunction, ssa_program: &SsaProgram,
 
 	let empty_static_values = HashMap::new();
 
-	println!("Lowering func {} to LIR", ssa_func.func_id());
-
 	let dom_tree = DomTree::analyze(ssa_func);
 
 	for (block_id, block) in ssa_func.iter() {
@@ -1351,6 +1349,8 @@ fn lower(ctx: &CompileContext, ssa_func: &SsaFunction, ssa_program: &SsaProgram,
 	let blocks = builder.body;
 
 	constant_pool.extend(reg_alloc.const_pool().clone());
+
+	println!("Lowered func {} to LIR", ssa_func.func_id());
 
 	LirFunction { code: blocks, returns: ssa_func.returns.clone() }
 }

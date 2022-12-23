@@ -1469,7 +1469,7 @@ pub fn validate(wasm_file: &WasmFile, func: usize) -> SsaFunction {
 
 	let (_, blocks) = state.builder.finish();
 
-	for (_block_idx, (block_id, block)) in blocks.iter().enumerate() {
+	for (_block_idx, (block_id, _block)) in blocks.iter().enumerate() {
 		println!("block {:?}", block_id);
 		//println!("==== block {:?} ==== ", block_id);
 		//println!("parameters: {:?}", block.params);

@@ -191,7 +191,7 @@ mod register_set {
 
 			//crate::ssa::liveness::print_liveness_info(&live_info, func);
 
-			println!("Need to create {} registers in set", all_vars.len());
+			//println!("Need to create {} registers in set", all_vars.len());
 
 			let regs = all_vars.into_iter().map(|var| {
 				let members = Some(var).into_iter().collect();
@@ -337,13 +337,13 @@ fn try_merge(sets: &mut RegisterSet, block_id: BlockId, instr_idx: usize, dst: &
 
 impl FullRegAlloc {
 	pub fn analyze(func: &SsaFunction) -> Self {
-		println!("Starting regalloc for {}", func.func_id());
+		//println!("Starting regalloc for {}", func.func_id());
 
 		let interf_graph = InterfGraph::new(func);
 
 		let mut sets = RegisterSet::new(func);
 
-		println!("Register sets created for {}", func.func_id());
+		//println!("Register sets created for {}", func.func_id());
 
 		for (block_id, block) in func.iter() {
 			for (instr_idx, instr) in block.body.iter().enumerate() {
@@ -362,8 +362,7 @@ impl FullRegAlloc {
 			}
 		}
 
-		println!("Coalesced into {} registers", sets.len());
-
+		println!("Coalesced func {} into {} registers", func.func_id(), sets.len());
 
 		FullRegAlloc { const_pool: HashSet::new(), map: sets.to_map(), func: func.func_id(), temp: 1000 }
 	}

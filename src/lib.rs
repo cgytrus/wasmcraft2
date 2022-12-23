@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::time::SystemTime;
 use command_parser::CommandParse;
 use datapack_common::functions::{command_components::NbtPath, Function};
 use clap::{Parser, clap_derive::ValueEnum};
@@ -223,13 +224,15 @@ impl CompileContext {
 pub fn run(args: Args) {
 	let ctx = CompileContext::new(args);
 
-	let bytes = std::fs::read(&ctx.input).unwrap();
+	let start = SystemTime::now();
 
+	let bytes = std::fs::read(&ctx.input).unwrap();
 	let file = ctx.compute_wasm_file(&bytes);
-	
 	let ssa_program = ctx.compute_ssa(&file);
 
 	if CODEGEN_STAGE == CodegenStage::Ssa {
+		println!("Finished in {}s", SystemTime::now().duration_since(start).unwrap().as_secs_f64());
+
 		if ctx.run_output {
 			let start_idx = file.exports.find_func("_start").unwrap();
 
@@ -249,6 +252,8 @@ pub fn run(args: Args) {
 	let lir_program = ctx.compute_lir(ssa_program);
 
 	if CODEGEN_STAGE == CodegenStage::Lir {
+		println!("Finished in {}s", SystemTime::now().duration_since(start).unwrap().as_secs_f64());
+
 		if ctx.run_output {
 			todo!("run the LIR interpreter");
 		}
@@ -259,6 +264,8 @@ pub fn run(args: Args) {
 	let datapack = ctx.compute_datapack(&lir_program);
 
 	std::mem::drop(lir_program);
+
+	println!("Finished in {}s", SystemTime::now().duration_since(start).unwrap().as_secs_f64());
 
 	if ctx.dump_datapack {
 		for func in datapack.iter() {
@@ -271,7 +278,9 @@ pub fn run(args: Args) {
 	}
 
 	if ctx.persist_output {
+		let start = SystemTime::now();
 		pack_emitter::persist_program(std::path::Path::new(&ctx.output), &datapack);
+		println!("Finished export in {}s", SystemTime::now().duration_since(start).unwrap().as_secs_f64());
 	}
 
 	if ctx.run_output {
