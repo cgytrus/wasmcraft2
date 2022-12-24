@@ -1,7 +1,9 @@
 use std::{collections::{HashSet, HashMap}, path::Path, ops::Range};
+use std::ops::Deref;
 
 use command_parser::parse_command;
 use datapack_common::functions::{Function, Command, command_components::{FunctionIdent, Uuid, SNbt}};
+use rust_embed::RustEmbed;
 use wasmparser::ValType;
 
 use crate::{lir::{LirProgram, LirFunction, LirBasicBlock, LirInstr, Register, LirTerminator, Condition, Half, DoubleRegister}, ssa::{BlockId, Memory, interp::TypedValue, const_prop::{StaticValue, BitMask}, lir_emitter::RegisterWithInfo}, jump_mode, JumpMode};
@@ -2372,49 +2374,26 @@ fn emit_function(func: &LirFunction, parent: &LirProgram, const_pool: &mut HashS
 	result
 }
 
+#[derive(RustEmbed)]
+#[folder = "assets/intrinsic"]
+struct Intrinsic;
+
 pub fn load_intrinsics() -> Vec<Function> {
 	let mut result = Vec::new();
-	for file in std::fs::read_dir("./src/intrinsic/").unwrap() {
-		let file = file.unwrap();
 
-		let file_name = file.file_name();
-		let file_name = file_name.to_string_lossy();
+	for i in Intrinsic::iter() {
+		let path = i.deref();
+		let file = Intrinsic::get(path).unwrap();
 
-		if file_name.ends_with(".mcfunction") {
-			let contents = std::fs::read_to_string(file.path()).unwrap();
-			let cmds = contents.lines()
-				.map(|l| l.trim())
-				.filter(|l| !l.is_empty());
+		let contents = std::str::from_utf8(file.data.deref()).unwrap();
+		let cmds = contents.lines()
+			.map(|l| l.trim())
+			.filter(|l| !l.is_empty());
 
-			let func_name = format!("intrinsic:{}", file_name.strip_suffix(".mcfunction").unwrap());
-			let _func_ident: FunctionIdent = parse_command(&func_name).unwrap();
+		let func_name = format!("intrinsic:{}", Path::new(path).with_extension("").to_str().unwrap());
+		let _func_ident: FunctionIdent = parse_command(&func_name).unwrap();
 
-			result.push(parse_function(&func_name, cmds));
-		} else {
-			for file2 in std::fs::read_dir(file.path()).unwrap() {
-				let file2 = file2.unwrap();
-
-				let file_name2 = file2.file_name();
-				let file_name2 = file_name2.to_string_lossy();
-
-				if file_name2.ends_with(".mcfunction") {
-					let contents = std::fs::read_to_string(file2.path()).unwrap();
-					let cmds = contents.lines()
-						.map(|l| l.trim())
-						.filter(|l| !l.is_empty() && !l.starts_with('#'))
-						.map(|l| l.parse().unwrap()).collect::<Vec<_>>();
-
-					let func_name = format!("intrinsic:{file_name}/{}", file_name2.strip_suffix(".mcfunction").unwrap());
-					let func_ident: FunctionIdent = parse_command(&func_name).unwrap();
-
-					result.push(Function { id: func_ident, cmds });
-
-				} else {
-					todo!()
-				}
-			}
-			// TODO: Nested
-		}
+		result.push(parse_function(&func_name, cmds));
 	}
 
 	result
@@ -2494,12 +2473,9 @@ impl Datapack {
 
     /// Creates a datapack with the given root directory, erasing the previous contents of the folder.
     pub fn save(&self, output_folder: &Path) -> Result<(), std::io::Error> {
-        if output_folder.exists() {
-            println!("Removing previous contents of output directory");
-            std::fs::remove_dir_all(output_folder)?;
-        }
-
-        std::fs::create_dir(&output_folder)?;
+		if !output_folder.exists() {
+			std::fs::create_dir(&output_folder)?;
+		}
 
         let mcmeta_contents = r#"
             { "pack": {
@@ -2513,59 +2489,10 @@ impl Datapack {
             mcmeta_contents.to_string(),
         )?;
 
-        /*
-        std::fs::create_dir_all(output_folder.join(Path::new("data/setup/functions/")))?;
-        std::fs::write(
-            output_folder.join(Path::new("data/setup/functions/setup.mcfunction")),
-            SETUP_STR,
-        )?;
-
-        std::fs::create_dir_all(output_folder.join(Path::new("data/stdout/functions/")))?;
-        std::fs::write(
-            output_folder.join(Path::new("data/stdout/functions/putc.mcfunction")),
-            PUTC_STR,
-        )?;
-        std::fs::write(
-            output_folder.join(Path::new("data/stdout/functions/flush.mcfunction")),
-            FLUSH_STR,
-        )?;
-        */
-
-        /*
-        for func in self.functions.iter() {
-            let contents = func
-                .cmds
-                .iter()
-                .map(|cmd| cmd.to_string())
-                .collect::<Vec<_>>();
-
-            let contents = contents.join("\n");
-
-            let path = func.id.path();
-            let path_folders = &path[..path.len() - 1];
-            let file_name = &path[path.len() - 1];
-
-            let mut full_path = output_folder
-                .join(Path::new("data"))
-                .join(Path::new(func.id.namespace()))
-                .join(Path::new("functions"));
-
-            for folder in path_folders {
-                full_path = full_path.join(Path::new(folder));
-            }
-
-            std::fs::create_dir_all(&full_path)?;
-
-            full_path = full_path.join(format!("{}.mcfunction", file_name));
-
-            std::fs::write(full_path, contents.as_bytes())?
-        }
-        */
-
         Ok(())
     }
 
-    pub fn write_function(&self, output_folder: &Path, namespace: &str, mut name: &str, contents: &str) -> std::io::Result<()> {
+    pub fn write_function(&self, output_folder: &Path, namespace: &str, mut name: &str, contents: &str) -> std::io::Result<std::path::PathBuf> {
         let prefix = if let Some((a, b)) = name.split_once('/') {
             name = b;
             a
@@ -2578,51 +2505,42 @@ impl Datapack {
 
         let func_name = format!("{}.mcfunction", name);
 
-        std::fs::write(func_folder.join(Path::new(&func_name)), contents)?;
+        let file_path = func_folder.join(Path::new(&func_name));
+        std::fs::write(file_path.deref(), contents)?;
 
-        Ok(())
+        Ok(file_path.canonicalize().unwrap())
     }
+}
+
+fn remove_old_in_directory(written_paths: &HashSet<std::path::PathBuf>, folder_path: std::path::PathBuf) {
+	for entry in std::fs::read_dir(folder_path).unwrap() {
+		let entry = entry.unwrap();
+		if entry.file_type().unwrap().is_dir() {
+			remove_old_in_directory(written_paths, entry.path());
+			continue;
+		}
+		if !written_paths.contains(entry.path().canonicalize().unwrap().as_path()) {
+			std::fs::remove_file(entry.path()).unwrap();
+		}
+	}
 }
 
 pub fn persist_program(folder_path: &Path, funcs: &[Function]) {
 	let datapack = Datapack::new();
 
-	datapack.save(folder_path).unwrap();
 	println!("Writing output");
+	datapack.save(folder_path).unwrap();
+
+	let mut written_paths = HashSet::<std::path::PathBuf>::new();
 	for func in funcs.iter() {
-		if func.id.namespace == "intrinsic" {
-			continue;
-		}
 		let contents = func.cmds.iter().map(ToString::to_string).collect::<Vec<_>>();
 		let contents = contents.join("\n");
-		datapack.write_function(folder_path, "wasmrunner", &func.id.path, &contents).unwrap();
+		let written_path = datapack.write_function(folder_path, &func.id.namespace, &func.id.path, &contents).unwrap();
+		written_paths.insert(written_path);
 	}
 
-	for i in std::fs::read_dir("./src/intrinsic").unwrap() {
-		let i = i.unwrap();
-		if i.file_type().unwrap().is_dir() {
-			for j in std::fs::read_dir(i.path()).unwrap() {
-				let j = j.unwrap();
-				if j.file_type().unwrap().is_dir() {
-					todo!()
-				} else {
-					let p = i.file_name();
-					let n = j.file_name();
-					let n = format!("{}/{}", p.to_string_lossy(), n.to_string_lossy());
-					let n = &n[..n.len() - ".mcfunction".len()];
-
-					let contents = std::fs::read_to_string(j.path()).unwrap();
-					datapack.write_function(folder_path, "intrinsic", n, &contents).unwrap();
-				}
-			}
-		} else {
-			let name = i.file_name();
-			let name = name.to_string_lossy();
-			let name = &name[..name.len() - ".mcfunction".len()];
-			let contents = std::fs::read_to_string(i.path()).unwrap();
-			datapack.write_function(folder_path, "intrinsic", name, &contents).unwrap();
-		}
-	}
+	println!("Removing old functions");
+	remove_old_in_directory(&written_paths, folder_path.join("data"));
 }
 
 #[cfg(test)]
