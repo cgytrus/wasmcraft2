@@ -2391,7 +2391,6 @@ pub fn load_intrinsics() -> Vec<Function> {
 			.filter(|l| !l.is_empty());
 
 		let func_name = format!("intrinsic:{}", Path::new(path).with_extension("").to_str().unwrap());
-		let _func_ident: FunctionIdent = parse_command(&func_name).unwrap();
 
 		result.push(parse_function(&func_name, cmds));
 	}
@@ -2534,7 +2533,8 @@ pub fn persist_program(folder_path: &Path, funcs: &[Function]) {
 	let mut written_paths = HashSet::<std::path::PathBuf>::new();
 	for func in funcs.iter() {
 		let contents = func.cmds.iter().map(ToString::to_string).collect::<Vec<_>>();
-		let contents = contents.join("\n");
+		let contents = contents.join("\n")
+			.replace("\\u{fffd}", "�"); // TODO: FIXME: HACK: THIS IS AN AWFUL HACK
 		let written_path = datapack.write_function(folder_path, &func.id.namespace, &func.id.path, &contents).unwrap();
 		written_paths.insert(written_path);
 	}
