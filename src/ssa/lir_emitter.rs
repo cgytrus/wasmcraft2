@@ -1268,10 +1268,7 @@ fn emit_copy(block: &mut Vec<LirInstr>, in_params: &[TypedSsaVar], out_params: &
 	}
 }
 
-const MANUALLY_ZERO_LOCALS: bool = false;
-
-//noinspection RsConstantConditionIf
-fn gen_prologue(ssa_func: &SsaFunction, ssa_program: &SsaProgram, ra: &mut dyn RegAlloc) -> Vec<LirInstr> {
+fn gen_prologue(ssa_func: &SsaFunction, ssa_program: &SsaProgram) -> Vec<LirInstr> {
 	let mut result = Vec::new();
 
 	let locals = ssa_program.local_types.get(&(ssa_func.func_id() as usize)).unwrap();
@@ -1291,21 +1288,6 @@ fn gen_prologue(ssa_func: &SsaFunction, ssa_program: &SsaProgram, ra: &mut dyn R
 				result.push(LirInstr::LocalSet(idx as u32, Half::Hi, Register::param_hi(idx as u32)));
 			}
 			_ => todo!(),
-		}
-	}
-
-	if MANUALLY_ZERO_LOCALS {
-		for (idx, local) in locals.iter().enumerate().skip(ssa_func.params.len()) {
-			match *local {
-				ValType::I32 | ValType::F32 => {
-					result.push(LirInstr::LocalSet(idx as u32, Half::Lo, ra.get_const(0)));
-				}
-				ValType::I64 | ValType::F64 => {
-					result.push(LirInstr::LocalSet(idx as u32, Half::Lo, ra.get_const(0)));
-					result.push(LirInstr::LocalSet(idx as u32, Half::Hi, ra.get_const(0)));
-				}
-				_ => todo!(),
-			}
 		}
 	}
 
@@ -1348,7 +1330,7 @@ fn lower(ctx: &CompileContext, ssa_func: &SsaFunction, ssa_program: &SsaProgram,
 	let locals = ssa_program.local_types.get(&(ssa_func.func_id() as usize)).unwrap();
 
 	let start_block = &mut builder.body.iter_mut().find(|(block_id, _block)| block_id.block == 0).unwrap().1;
-	let prologue = gen_prologue(ssa_func, ssa_program, &mut *reg_alloc);
+	let prologue = gen_prologue(ssa_func, ssa_program);
 	start_block.body.splice(0..0, prologue);
 
 	if let Some((_, end_block)) = &mut builder.body.iter_mut().find(|(block_id, _block)| block_id.block == 1) {
