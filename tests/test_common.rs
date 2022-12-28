@@ -9,7 +9,7 @@ pub mod wasm_suite_prelude {
 
 	pub struct TestState<'a> {
 		wasm_file: WasmFile<'a>,
-	
+
 		interp: SsaInterpreter
 	}
 
@@ -17,7 +17,7 @@ pub mod wasm_suite_prelude {
 		match expr {
 			SExpr::Node { name, params } if name == "invoke" => {
 				let test_state = test_state.unwrap();
-				
+
 				let func_name = &params[0];
 				let func_params = &params[1..];
 
@@ -123,15 +123,15 @@ pub mod wasm_suite_prelude {
 
 	pub struct TestState<'a> {
 		wasm_file: WasmFile<'a>,
-	
-		interp: LirInterpreter 
+
+		interp: LirInterpreter
 	}
 
 	pub fn eval(expr: &SExpr, test_state: Option<&mut TestState>) -> Vec<TypedValue> {
 		match expr {
 			SExpr::Node { name, params } if name == "invoke" => {
 				let test_state = test_state.unwrap();
-				
+
 				let func_name = &params[0];
 				let func_params = &params[1..];
 
@@ -232,16 +232,16 @@ pub mod wasm_suite_prelude {
 
 pub mod wasm_suite_prelude {
 	use command_parser::CommandParse;
-	use datapack_common::functions::command_components::{FunctionIdent, ScoreHolder, Objective};
+	use datapack_common::functions::command_components::{FunctionIdent};
 	use datapack_vm::Interpreter;
-	use wasmcraft::{wasm_file::WasmFile, ssa::{interp::{SsaInterpreter, TypedValue}, lir_emitter, BlockId}, validator::wasm_to_ssa, lir::{interp::LirInterpreter, Register}, pack_emitter::{self, get_mc_id}, CompileContext};
+	use wasmcraft::{wasm_file::WasmFile, ssa::{interp::TypedValue}, lir::Register, CompileContext};
 	use wasmparser::ValType;
 
 	use super::sexpr::SExpr;
 
 	pub struct TestState<'a> {
 		wasm_file: WasmFile<'a>,
-	
+
 		interp: Interpreter,
 	}
 
@@ -293,7 +293,7 @@ pub mod wasm_suite_prelude {
 		match expr {
 			SExpr::Node { name, params } if name == "invoke" => {
 				let test_state = test_state.unwrap();
-				
+
 				let func_name = &params[0];
 				let func_params = &params[1..];
 
@@ -317,7 +317,7 @@ pub mod wasm_suite_prelude {
 
 				let interp_idx = test_state.interp.get_func_idx(&mc_func_name);
 				test_state.interp.set_pos(interp_idx);
-				
+
 				test_state.interp.run_to_end().unwrap();
 
 				get_returns(&mut test_state.interp, return_tys)

@@ -212,6 +212,7 @@ impl SsaInterpreter {
 		}
 	}
 
+	//noinspection RsConstantConditionIf
 	pub fn step(&mut self) -> Option<Vec<TypedValue>> {
 		//println!("{:?}", self.call_stack);
 

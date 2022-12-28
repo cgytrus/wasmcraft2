@@ -2,7 +2,7 @@
 mod sexpr;
 
 use rcon::{Connection, AsyncStdStream};
-use wasmcraft::{ssa::{interp::TypedValue, lir_emitter, BlockId}, lir::Register, wasm_file::WasmFile, validator::wasm_to_ssa, pack_emitter::{self, get_mc_id}, CompileContext};
+use wasmcraft::{ssa::{interp::TypedValue, BlockId}, lir::Register, wasm_file::WasmFile, pack_emitter::{self, get_mc_id}, CompileContext};
 use wasmparser::ValType;
 
 type Server = Connection<AsyncStdStream>;
@@ -13,7 +13,7 @@ async fn connect_to_server() -> Server {
 	    .enable_minecraft_quirks(true)
 	    .connect(address, "test")
 	    .await.unwrap()
-	
+
 	//let resp = conn.cmd("scoreboard players set %param%0%lo reg 123").await.unwrap();
 	//println!("resp: {}", resp);
 }
@@ -135,7 +135,7 @@ async fn eval(expr: &SExpr, test_state: Option<&mut TestState<'_>>) -> Vec<Typed
 	match expr {
 		SExpr::Node { name, params } if name == "invoke" => {
 			let test_state = test_state.unwrap();
-			
+
 			let func_name = &params[0];
 			let func_params2 = &params[1..];
 

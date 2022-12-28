@@ -55,7 +55,7 @@ pub struct Args {
     #[clap(long, value_enum)]
     regalloc: Option<RegAllocMode>,
 
-	/// Perform SSA constant propogation
+	/// Perform SSA constant propagation
 	#[clap(long = "do-const-prop", action = clap::ArgAction::Set)]
 	do_const_prop: Option<bool>,
 
@@ -105,7 +105,7 @@ pub struct CompileContext {
 
     /// Which form of register allocation to use.
     regalloc: RegAllocMode,
-	/// Perform SSA constant propogation
+	/// Perform SSA constant propagation
 	do_const_prop: bool,
 	/// Perform SSA dead code elimination
 	do_dead_code_elim: bool,
@@ -275,7 +275,7 @@ pub fn run(args: Args) {
 
 	let datapack = ctx.compute_datapack(&lir_program);
 
-	std::mem::drop(lir_program);
+	drop(lir_program);
 
 	println!("Finished in {}s", SystemTime::now().duration_since(start).unwrap().as_secs_f64());
 
@@ -283,7 +283,7 @@ pub fn run(args: Args) {
 		for func in datapack.iter() {
 			println!("-------- func {} --------", func.id);
 			for cmd in func.cmds.iter() {
-				println!("\t{}", cmd);
+				println!("\t{:?}", cmd);
 			}
 			println!();
 		}
@@ -452,18 +452,6 @@ fn run_interp(
 	println!("Command run counter: {}", cmd);
 
 	println!("Ticks run: {}", interp.tick);
-
-	if false {
-		use std::io::Write;
-
-		let dur = std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap();
-		let path = format!("./interp_output_{}.txt", dur.as_secs());
-		let mut f = std::fs::File::create(&path).unwrap();
-		for out in interp.output {
-			f.write_all(out.as_bytes()).unwrap();
-			f.write_all(b"\n").unwrap();
-		}
-	}
 }
 
 // TODO: Test mixed-tick tables

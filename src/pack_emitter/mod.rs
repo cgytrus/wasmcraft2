@@ -367,6 +367,7 @@ fn mem_store_unaligned_32(src: Register, addr: i32, offset: i32, code: &mut Vec<
 	code.push(format!("execute store result block {x1} {y1} {z1} RecordItem.tag.Memory int 1 run scoreboard players get {tmp1}"));
 }
 
+//noinspection RsConstantConditionIf
 fn mem_store_32(src: Register, addr: RegisterWithInfo, code: &mut Vec<String>, const_pool: &mut HashSet<i32>) {
 	if INSERT_MEM_PRINTS {
 		code.push(tellraw_mem_store(32, src, addr.0));
@@ -429,6 +430,7 @@ fn mem_store_32(src: Register, addr: RegisterWithInfo, code: &mut Vec<String>, c
 	}
 }
 
+//noinspection RsConstantConditionIf
 fn mem_store_16(src: Register, addr: RegisterWithInfo, code: &mut Vec<String>, const_pool: &mut HashSet<i32>) {
 	if INSERT_MEM_PRINTS {
 		code.push(tellraw_mem_store(16, src, addr.0));
@@ -490,6 +492,7 @@ fn mem_store_16(src: Register, addr: RegisterWithInfo, code: &mut Vec<String>, c
 	}
 }
 
+//noinspection RsConstantConditionIf
 fn mem_store_8 (src: Register, addr: RegisterWithInfo, code: &mut Vec<String>) {
 	if INSERT_MEM_PRINTS {
 		code.push(tellraw_mem_store(8, src, addr.0));
@@ -727,6 +730,7 @@ fn known_bits(value: StaticValue) -> u64 {
 	}
 }
 
+//noinspection RsConstantConditionIf
 fn mem_load_32(dst: Register, addr: RegisterWithInfo, code: &mut Vec<String>, const_pool: &mut HashSet<i32>) {
 	if let Some(addr) = addr.get_const() {
 		match addr % 4 {
@@ -792,6 +796,7 @@ fn mem_load_32(dst: Register, addr: RegisterWithInfo, code: &mut Vec<String>, co
 	}
 }
 
+//noinspection RsConstantConditionIf
 fn mem_load_16(dst: Register, addr: RegisterWithInfo, code: &mut Vec<String>) {
 	if let Some(addr) = addr.get_const() {
 		match addr % 4 {
@@ -878,6 +883,7 @@ fn mem_load_16(dst: Register, addr: RegisterWithInfo, code: &mut Vec<String>) {
 
 const ENABLE_MEM_OPTS: bool = false;
 
+//noinspection RsConstantConditionIf
 fn mem_load_8 (dst: Register, addr: RegisterWithInfo, code: &mut Vec<String>) {
 	if let Some(addr) = addr.get_const() {
 		assert!(addr >= 0);
@@ -970,7 +976,7 @@ fn unsigned_less_than_eq(dst: Register, lhs: Register, rhs: Register, code: &mut
 		let r_value = r as u32;
 		if r_value == u32::MAX {
 			// n <= u32::MAX is always true; this should be caught in const prop!
-			panic!("missed optimization in const propogation: n <= u32::MAX");
+			panic!("missed optimization in const propagation: n <= u32::MAX");
 		} else if r_value == 0 {
 			// n <= 0 for unsigned values is only true if n == 0
 			code.push(format!("execute store success score {dst} if score {lhs} matches 0"));
@@ -983,7 +989,7 @@ fn unsigned_less_than_eq(dst: Register, lhs: Register, rhs: Register, code: &mut
 		let l_value = l as u32;
 		if l == 0 {
 			// 0 <= n is always true; this should be caught in const prop!
-			panic!("missed optimization in const propogation: 0 <= n");
+			panic!("missed optimization in const propagation: 0 <= n");
 		} else {
 			let new_l = (l_value - 1) as i32;
 			const_pool.insert(new_l);
@@ -1597,7 +1603,7 @@ fn emit_constant_xor(dst: Register, lhs: RegisterWithInfo, mut rhs: i32, code: &
 	}
 
 	if rhs == 1 << 31 {
-		// TODO: Add a regresstion test; this didn't work because it tried to add a negative number.
+		// TODO: Add a regression test; this didn't work because it tried to add a negative number.
 
 		// This adds (1 << 31), but it has to be split into two parts.
 		code.push(format!("scoreboard players add {dst} {}", i32::MAX));
@@ -2044,7 +2050,7 @@ fn emit_instr(instr: &LirInstr, parent: &LirProgram, code: &mut Vec<String>, con
 			code.push(format!("execute unless score {dst} matches 1 run execute store success score {dst} unless score {lhs_hi} = {rhs_hi}"));
 		},
 
-		crate::lir::LirInstr::Trunc(_, _) => todo!(),
+		LirInstr::Trunc(_, _) => todo!(),
 
 		&LirInstr::SignExtend8(reg) => {
 			code.push(format!("scoreboard players operation {reg} %= %%{} reg", u8::MAX as i32 + 1));
@@ -2232,7 +2238,7 @@ fn emit_block(block_id: BlockId, block: &LirBasicBlock, parent: &LirProgram, con
 	// FIXME: This doesn't include called functions, the terminator, or count `execute` commands properly.
 	let mut num_cmds = code.len();
 	for c in code.iter() {
-		if c.contains("intrinsic:and") || c.contains("intrinisic:or") || c.contains("intrinsic:xor") {
+		if c.contains("intrinsic:and") || c.contains("intrinsic:or") || c.contains("intrinsic:xor") {
 			num_cmds += 200;
 		} else if c.contains("intrinsic:shl_64") {
 			num_cmds += 700;
@@ -2342,14 +2348,14 @@ fn emit_block(block_id: BlockId, block: &LirBasicBlock, parent: &LirProgram, con
 				todo!()
 			}
 		}
-		crate::lir::LirTerminator::Return => {
+		LirTerminator::Return => {
 			if jump_mode() == JumpMode::Direct {
 				// Do nothing
 			} else {
 				todo!()
 			}
 		}
-		crate::lir::LirTerminator::ReturnToSaved => {
+		LirTerminator::ReturnToSaved => {
 			if jump_mode() == JumpMode::Direct {
 				code.push("function wasmrunner:__return_to_saved".to_string());
 			} else {

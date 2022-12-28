@@ -779,7 +779,7 @@ fn lower_block<L>(
 				block.push(LirInstr::Assign(dst, src.lo()));
 			}
 			super::SsaInstr::Select { dst, true_var, false_var, cond } => {
-				assert!(cond.ty() == ValType::I32);
+				assert_eq!(cond.ty(), ValType::I32);
 				let cond = ra.get(cond.into_untyped());
 
 				assert!(dst.ty() == true_var.ty() ||
@@ -1270,6 +1270,7 @@ fn emit_copy(block: &mut Vec<LirInstr>, in_params: &[TypedSsaVar], out_params: &
 
 const MANUALLY_ZERO_LOCALS: bool = false;
 
+//noinspection RsConstantConditionIf
 fn gen_prologue(ssa_func: &SsaFunction, ssa_program: &SsaProgram, ra: &mut dyn RegAlloc) -> Vec<LirInstr> {
 	let mut result = Vec::new();
 
